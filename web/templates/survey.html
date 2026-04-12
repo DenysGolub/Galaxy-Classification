@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCI Terminal | AI Neural Sync</title>
+    <link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.css" />
+    <style>
+        :root {
+            --obsidian: #020617; --plasma: #22d3ee; --neutron: #f8fafc;
+            --nebula: #8b5cf6; --border: rgba(34, 211, 238, 0.3);
+            --warning: #f59e0b; --ready: #4ade80;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--obsidian); color: var(--neutron); font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+
+        aside { width: 260px; background: #010409; border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 30px 0; flex-shrink: 0; }
+        .logo { padding: 0 30px 40px; font-weight: 900; color: var(--plasma); letter-spacing: 2px; text-shadow: 0 0 10px var(--plasma); }
+        
+        main { flex-grow: 1; display: grid; grid-template-columns: 1fr 420px; grid-template-rows: 70px 1fr; background: radial-gradient(circle at center, #0f172a 0%, #020617 100%); }
+        header { grid-column: 1 / span 2; padding: 0 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); z-index: 1000; }
+
+        .map-area { position: relative; border-right: 1px solid var(--border); overflow: hidden; }
+        #map { width: 100%; height: 100%; background: #000; }
+
+        /* HD Reticle Overlay */
+        .capture-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 300px; height: 300px; border: 1px solid var(--plasma);
+            box-shadow: 0 0 30px rgba(34, 211, 238, 0.1); pointer-events: none; z-index: 500;
+            transition: 0.3s;
+        }
+        .capture-overlay.syncing { border: 2px solid #fff; animation: pulse 0.8s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        #hd-status {
+            position: absolute; top: -25px; left: 0; font-family: monospace;
+            font-size: 10px; color: var(--plasma); text-transform: uppercase;
+        }
+
+        /* Panels */
+        .data-panel { padding: 25px; background: rgba(15, 23, 42, 0.8); display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .card { position: relative; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        #capture-canvas { width: 100%; aspect-ratio: 1/1; background: #000; border: 1px solid var(--nebula); border-radius: 8px; margin: 15px 0; }
+        
+        #prediction-overlay {
+            position: absolute; top: 40px; left: 40px; right: 40px; 
+            padding: 15px; background: rgba(2, 6, 23, 0.9); border-left: 3px solid var(--plasma);
+            font-family: monospace; font-size: 12px; display: none; z-index: 10;
+        }
+
+        .btn-group { display: flex; gap: 10px; }
+        .btn-scan { flex: 1; padding: 12px; background: var(--nebula); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 11px; }
+        .btn-predict { flex: 1; padding: 12px; background: transparent; color: var(--plasma); border: 1px solid var(--plasma); border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 11px; }
+        .btn-predict:disabled { opacity: 0.3; }
+
+        .aladin-zoom-control, .aladin-layers-control, .aladin-status, .aladin-info, .aladin-logo, .aladin-attribution { display: none !important; }
+    </style>
+</head>
+<body>
+
+<aside><div class="logo">✦ GCI PORTAL</div></aside>
+
+<main>
+    <header>
+        <div>SYSTEM: <span id="sys-msg" style="color: var(--plasma);">ONLINE</span></div>
+        <div id="header-coords" style="font-size: 11px; color: #64748b;">RA --, DEC --</div>
+    </header>
+
+    <section class="map-area">
+        <div id="map"></div>
+        <div class="capture-overlay" id="reticle">
+            <div id="hd-status">SD BUFFER</div>
+        </div>
+    </section>
+
+    <section class="data-panel">
+        <section class="card">
+            <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">Neural Analysis Frame</div>
+            <div id="prediction-overlay">
+                <div style="color: var(--plasma); margin-bottom: 5px;">INFERENCE RESULTS:</div>
+                <div id="predict-results">---</div>
+            </div>
+            <canvas id="capture-canvas" width="600" height="600"></canvas>
+            <div class="btn-group">
+                <button class="btn-scan" onclick="captureLocalArea()">Capture HD</button>
+                <button class="btn-predict" id="predict-btn" onclick="runInference()" disabled>Predict</button>
+            </div>
+        </section>
+    </section>
+</main>
+
+<script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js"></script>
+<script>
+let aladin;
+const reticle = document.getElementById('reticle');
+const hdStatus = document.getElementById('hd-status');
+const predictBtn = document.getElementById('predict-btn');
+const predictOverlay = document.getElementById('prediction-overlay');
+let hdTimer;
+
+let galaxyCatalog;
+
+A.init.then(() => {
+    aladin = A.aladin('#map', {
+        survey: "CDS/P/DESI-Legacy-Surveys/DR10/color",
+        fov: 0.15,
+        target: "195.163 2.583",
+        progressive: true,
+        cors: 'anonymous'
+    });
+
+    // 👉 ADD THIS
+    galaxyCatalog = A.catalog({
+        name: "Detected Galaxies",
+        sourceSize: 12,
+        color: "#22d3ee"
+    });
+    aladin.addCatalog(galaxyCatalog);
+
+
+    aladin.on('move', () => {
+        const center = aladin.getRaDec(); 
+        document.getElementById('header-coords').innerText = `RA ${center[0].toFixed(4)}, DEC ${center[1].toFixed(4)}`;
+        
+        reticle.classList.remove('syncing');
+        hdStatus.innerText = "Recalibrating...";
+        hdStatus.style.color = "var(--warning)";
+        
+        clearTimeout(hdTimer);
+        hdTimer = setTimeout(() => {
+            reticle.classList.add('syncing');
+            hdStatus.innerText = "Syncing HD Tiles...";
+            hdStatus.style.color = "var(--plasma)";
+            aladin.setFov(aladin.getFov());
+        }, 500);
+    });
+
+    aladin.on('viewFinished', () => {
+        reticle.classList.remove('syncing');
+        hdStatus.innerText = "HD Buffer Ready";
+        hdStatus.style.color = "var(--ready)";
+    });
+});
+
+function captureLocalArea() {
+    const aladinCanvas = document.querySelector('#map canvas');
+    const displayCanvas = document.getElementById('capture-canvas');
+    const ctx = displayCanvas.getContext('2d');
+    
+    if (!aladinCanvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const boxSize = 300 * dpr; 
+    const sx = (aladinCanvas.width / 2) - (boxSize / 2);
+    const sy = (aladinCanvas.height / 2) - (boxSize / 2);
+
+    ctx.clearRect(0, 0, 600, 600);
+    ctx.drawImage(aladinCanvas, sx, sy, boxSize, boxSize, 0, 0, 600, 600);
+    
+    predictBtn.disabled = false;
+    predictOverlay.style.display = 'none';
+}
+
+async function runInference() {
+    const canvas = document.getElementById('capture-canvas');
+    predictBtn.innerText = "CONSULTING MODEL...";
+    predictBtn.disabled = true;
+
+    const imageData = canvas.toDataURL('image/jpeg');
+
+    try {
+        const response = await fetch('/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageData })
+        });
+        const result = await response.json();
+
+        if (result.status === "success") {
+            predictOverlay.style.display = 'block';
+            document.getElementById('predict-results').innerHTML = 
+                `CLASS: ${result.class}<br>CONFIDENCE: ${result.confidence}<br>DETAILS: ${result.details}`;
+        }
+    } catch (e) {
+        alert("Flask Backend not detected.");
+    } finally {
+        predictBtn.innerText = "Predict";
+        predictBtn.disabled = false;
+    }
+}
+</script>
+</body>
+</html>
