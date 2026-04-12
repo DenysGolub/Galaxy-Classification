@@ -5,49 +5,36 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-from galaxy_source.galaxy_cnn import GalaxyCNN
+import numpy as np
+import seaborn as sns
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, f1_score, precision_score, recall_score
 
 
 class GalaxyTrainer:
     def __init__(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.class_counts = torch.tensor([
+            1081 + 1853,
+            2645 + 2027 + 334,
+            2043 + 1829 + 2628,
+            1423 + 1873
+        ], dtype=torch.float)
+
+        self.weights = self.class_counts.sum() / self.class_counts
+        self.weights = self.weights.to(self.device)
+
+        self.criterion = nn.CrossEntropyLoss(
+        weight=self.weights,
+        label_smoothing=0.1)
 
     def train(self, train_dataset, test_dataset, num_epochs=50, batch_size=64):
         # -------------------------
-        # 1. Get labels safely
-        # -------------------------
-        labels = torch.tensor(
-            [train_dataset[i][1] for i in range(len(train_dataset))],
-            dtype=torch.long
-        )
-
-        # -------------------------
-        # 2. Class balancing (Sampler)
-        # -------------------------
-        num_classes = 4
-
-        class_sample_count = torch.tensor(
-            [(labels == i).sum() for i in range(num_classes)],
-            dtype=torch.float
-        )
-
-        class_sample_count = torch.clamp(class_sample_count, min=1)
-        class_weights = 1.0 / class_sample_count
-        samples_weight = class_weights[labels]
-
-        sampler = WeightedRandomSampler(
-            weights=samples_weight,
-            num_samples=len(samples_weight),
-            replacement=True
-        )
-
-        # -------------------------
-        # 3. DataLoaders
+        # 1. DataLoaders
         # -------------------------
         train_loader = DataLoader(
             train_dataset,
             batch_size=batch_size,
-            sampler=sampler,
+            shuffle=True,
             num_workers=2,
             pin_memory=True
         )
@@ -61,8 +48,9 @@ class GalaxyTrainer:
         )
 
         # -------------------------
-        # 4. Model
+        # 2. Model
         # -------------------------
+        num_classes = 4
         model = GalaxyCNN(num_classes=num_classes).to(self.device)
 
         if torch.cuda.device_count() > 1:
@@ -70,13 +58,18 @@ class GalaxyTrainer:
             model = nn.DataParallel(model)
 
         # -------------------------
-        # 5. Loss (без class weights!)
+        # 3. Class weights (ВАЖЛИВО)
         # -------------------------
-        self.criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
 
+
+      
+
+        # -------------------------
+        # 4. Optimizer
+        # -------------------------
         self.optimizer = optim.AdamW(
             model.parameters(),
-            lr=2e-4,
+            lr=1e-4,              # 🔥 зменшили
             weight_decay=1e-4
         )
 
@@ -88,14 +81,17 @@ class GalaxyTrainer:
         scaler = torch.cuda.amp.GradScaler(enabled=(self.device.type == "cuda"))
 
         # -------------------------
-        # 6. Metrics
+        # 5. Metrics
         # -------------------------
         best_val_acc = 0
+        patience = 5
+        epochs_no_improve = 0
+
         self.train_losses, self.train_accuracies = [], []
         self.val_losses, self.val_accuracies = [], []
 
         # -------------------------
-        # 7. Training loop
+        # 6. Training loop
         # -------------------------
         for epoch in range(num_epochs):
             model.train()
@@ -149,12 +145,23 @@ class GalaxyTrainer:
 
             self.scheduler.step()
 
-            # Save best model
+            # -------------------------
+            # Early stopping + save
+            # -------------------------
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
+                epochs_no_improve = 0
                 torch.save(model.state_dict(), f"../models/best_{best_val_acc:.4f}.pth")
+            else:
+                epochs_no_improve += 1
 
-            # Save metrics
+            if epochs_no_improve >= patience:
+                print("Early stopping triggered")
+                break
+
+            # -------------------------
+            # Logging
+            # -------------------------
             self.train_losses.append(train_loss)
             self.train_accuracies.append(train_acc)
             self.val_losses.append(val_loss)
@@ -168,6 +175,7 @@ class GalaxyTrainer:
             )
 
         return model
+
 
     # -------------------------
     # Evaluation
@@ -224,10 +232,72 @@ class GalaxyTrainer:
     # -------------------------
     # Predict
     # -------------------------
-    def predict(self, model, image):
+
+    
+
+    def evaluate_metrics(self, model, test_loader, class_names=None):
         model.eval()
+        model.float()
+        model.to(self.device)
+
+        y_true = []
+        y_pred = []
+
         with torch.no_grad():
-            image = image.unsqueeze(0).to(self.device)
-            output = model(image)
-            predicted_class = output.argmax(dim=1).item()
-        return predicted_class
+            for images, labels in test_loader:
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+
+                # замість autocast
+                outputs = model(images)
+                loss = self.criterion(outputs, labels)
+
+
+                preds = outputs.argmax(dim=1)
+
+                y_true.extend(labels.cpu().numpy())
+                y_pred.extend(preds.cpu().numpy())
+
+        # -------------------------
+        # Metrics
+        # -------------------------
+        acc = accuracy_score(y_true, y_pred)
+        f1 = f1_score(y_true, y_pred, average="macro")
+        precision = precision_score(y_true, y_pred, average="macro")
+        recall = recall_score(y_true, y_pred, average="macro")
+
+        print("\n🔥 FINAL METRICS")
+        print(f"Accuracy:  {acc:.4f}")
+        print(f"F1-score:  {f1:.4f}")
+        print(f"Precision: {precision:.4f}")
+        print(f"Recall:    {recall:.4f}")
+
+        print("\n📊 Classification Report:\n")
+        print(classification_report(y_true, y_pred, target_names=class_names))
+
+        # -------------------------
+        # Confusion Matrix
+        # -------------------------
+        cm = confusion_matrix(y_true, y_pred)
+
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(
+            cm,
+            annot=True,
+            fmt="d",
+            cmap="Blues",
+            xticklabels=class_names,
+            yticklabels=class_names
+        )
+        plt.xlabel("Predicted")
+        plt.ylabel("True")
+        plt.title("Confusion Matrix")
+        plt.show()
+
+        return {
+            "accuracy": acc,
+            "f1": f1,
+            "precision": precision,
+            "recall": recall
+        }
+
