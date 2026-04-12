@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from galaxy_cnn import GalaxyCNN
 
 import numpy as np
 import seaborn as sns
@@ -28,9 +29,6 @@ class GalaxyTrainer:
         label_smoothing=0.1)
 
     def train(self, train_dataset, test_dataset, num_epochs=50, batch_size=64):
-        # -------------------------
-        # 1. DataLoaders
-        # -------------------------
         train_loader = DataLoader(
             train_dataset,
             batch_size=batch_size,
@@ -46,10 +44,6 @@ class GalaxyTrainer:
             num_workers=2,
             pin_memory=True
         )
-
-        # -------------------------
-        # 2. Model
-        # -------------------------
         num_classes = 4
         model = GalaxyCNN(num_classes=num_classes).to(self.device)
 
@@ -57,19 +51,10 @@ class GalaxyTrainer:
             print("Using", torch.cuda.device_count(), "GPUs")
             model = nn.DataParallel(model)
 
-        # -------------------------
-        # 3. Class weights (ВАЖЛИВО)
-        # -------------------------
 
-
-      
-
-        # -------------------------
-        # 4. Optimizer
-        # -------------------------
         self.optimizer = optim.AdamW(
             model.parameters(),
-            lr=1e-4,              # 🔥 зменшили
+            lr=1e-4,            
             weight_decay=1e-4
         )
 
@@ -80,9 +65,6 @@ class GalaxyTrainer:
 
         scaler = torch.cuda.amp.GradScaler(enabled=(self.device.type == "cuda"))
 
-        # -------------------------
-        # 5. Metrics
-        # -------------------------
         best_val_acc = 0
         patience = 5
         epochs_no_improve = 0
@@ -90,9 +72,6 @@ class GalaxyTrainer:
         self.train_losses, self.train_accuracies = [], []
         self.val_losses, self.val_accuracies = [], []
 
-        # -------------------------
-        # 6. Training loop
-        # -------------------------
         for epoch in range(num_epochs):
             model.train()
             train_loss, correct, total = 0, 0, 0
@@ -120,9 +99,6 @@ class GalaxyTrainer:
             train_loss /= total
             train_acc = correct / total
 
-            # -------------------------
-            # Validation
-            # -------------------------
             model.eval()
             val_loss, val_correct, val_total = 0, 0, 0
 
@@ -144,10 +120,6 @@ class GalaxyTrainer:
             val_acc = val_correct / val_total
 
             self.scheduler.step()
-
-            # -------------------------
-            # Early stopping + save
-            # -------------------------
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
                 epochs_no_improve = 0
@@ -159,9 +131,6 @@ class GalaxyTrainer:
                 print("Early stopping triggered")
                 break
 
-            # -------------------------
-            # Logging
-            # -------------------------
             self.train_losses.append(train_loss)
             self.train_accuracies.append(train_acc)
             self.val_losses.append(val_loss)
@@ -177,9 +146,6 @@ class GalaxyTrainer:
         return model
 
 
-    # -------------------------
-    # Evaluation
-    # -------------------------
     def evaluate(self, model, test_loader):
         model.eval()
         val_loss, val_correct, val_total = 0, 0, 0
@@ -202,9 +168,6 @@ class GalaxyTrainer:
         val_acc = val_correct / val_total
         return val_loss, val_acc
 
-    # -------------------------
-    # Plot
-    # -------------------------
     def plot_metrics(self):
         epochs = range(1, len(self.train_losses) + 1)
 
@@ -248,7 +211,6 @@ class GalaxyTrainer:
                 images = images.to(self.device)
                 labels = labels.to(self.device)
 
-                # замість autocast
                 outputs = model(images)
                 loss = self.criterion(outputs, labels)
 
@@ -258,9 +220,6 @@ class GalaxyTrainer:
                 y_true.extend(labels.cpu().numpy())
                 y_pred.extend(preds.cpu().numpy())
 
-        # -------------------------
-        # Metrics
-        # -------------------------
         acc = accuracy_score(y_true, y_pred)
         f1 = f1_score(y_true, y_pred, average="macro")
         precision = precision_score(y_true, y_pred, average="macro")
@@ -275,9 +234,6 @@ class GalaxyTrainer:
         print("\n📊 Classification Report:\n")
         print(classification_report(y_true, y_pred, target_names=class_names))
 
-        # -------------------------
-        # Confusion Matrix
-        # -------------------------
         cm = confusion_matrix(y_true, y_pred)
 
         plt.figure(figsize=(8, 6))
