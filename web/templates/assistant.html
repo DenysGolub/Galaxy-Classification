@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCI Console | Astrophysical Analysis Core</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0a0a0c;
+            --bg-panel: #111114;
+            --accent: #00d4ff; /* Scientific Cyan */
+            --data-blue: #3b82f6;
+            --text-main: #d1d5db;
+            --text-dim: #6b7280;
+            --border-ui: #26262a;
+            --font-mono: 'Roboto Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            background-color: var(--bg-base); 
+            color: var(--text-main); 
+            font-family: 'Inter', sans-serif; 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden;
+            letter-spacing: -0.01em;
+        }
+
+        /* Research Sidebar */
+        aside { 
+            width: 280px; 
+            background: var(--bg-panel); 
+            border-right: 1px solid var(--border-ui); 
+            display: flex; 
+            flex-direction: column; 
+            flex-shrink: 0;
+        }
+        
+        .console-label {
+            padding: 20px 24px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid var(--border-ui);
+        }
+
+        .data-stat {
+            padding: 15px 24px;
+            border-bottom: 1px solid var(--border-ui);
+        }
+        .stat-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px; }
+        .stat-value { font-family: var(--font-mono); font-size: 12px; color: var(--text-main); }
+
+        /* Main Viewport */
+        main { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; }
+        
+        header { 
+            height: 50px; padding: 0 24px; 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 1px solid var(--border-ui); 
+            background: rgba(10, 10, 12, 0.8);
+            font-family: var(--font-mono); font-size: 10px;
+        }
+
+        .chat-layout { flex-grow: 1; display: grid; grid-template-columns: 1fr 320px; overflow: hidden; }
+
+        /* Assistant Interface */
+        .analysis-core { display: flex; flex-direction: column; border-right: 1px solid var(--border-ui); background: #0c0c0f; }
+
+        #chat-history { 
+            flex-grow: 1; overflow-y: auto; padding: 32px; 
+            display: flex; flex-direction: column; gap: 32px;
+        }
+
+        /* Scientific Message Blocks */
+        .entry { display: flex; flex-direction: column; gap: 8px; max-width: 900px; margin: 0 auto; width: 100%; }
+        
+        .entry-meta { 
+            font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+            display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-ui); padding-bottom: 4px;
+        }
+
+        .content { font-size: 14px; line-height: 1.6; color: var(--text-main); }
+        .content.ai { color: #e5e7eb; white-space: pre-wrap; }
+        .content.user { color: var(--data-blue); font-weight: 500; }
+
+        /* Footer Input Area */
+        .input-module { 
+            padding: 24px; border-top: 1px solid var(--border-ui);
+            background: var(--bg-panel);
+        }
+        
+        .input-container {
+            display: flex; background: #000; border: 1px solid var(--border-ui);
+            border-radius: 4px; padding: 4px;
+        }
+
+        input { 
+            flex-grow: 1; background: transparent; border: none; color: var(--accent); 
+            padding: 12px 16px; font-size: 13px; font-family: var(--font-mono); outline: none; 
+        }
+
+        .btn-execute { 
+            background: #1e1e22; color: var(--text-main); border: 1px solid var(--border-ui); 
+            padding: 0 20px; border-radius: 2px; font-family: var(--font-mono);
+            font-size: 11px; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-execute:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+
+        /* Right Panel: Telemetry */
+        .telemetry-panel { padding: 20px; background: var(--bg-base); font-family: var(--font-mono); font-size: 10px; overflow-y: auto; }
+        .tel-row { display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--text-dim); }
+        .tel-val { color: var(--data-blue); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-ui); }
+    </style>
+</head>
+<body>
+
+<aside>
+    <div class="console-label">GCI_RESEARCH_CORE</div>
+    <div class="data-stat">
+        <div class="stat-label">System State</div>
+        <div class="stat-value">Nominal // Llama-3_Active</div>
+    </div>
+    <div class="data-stat">
+        <div class="stat-label">Model Architecture</div>
+        <div class="stat-value">Meta-Llama-3-8B-Instruct</div>
+    </div>
+    <div class="data-stat">
+        <div class="stat-label">Session ID</div>
+        <div class="stat-value">DIPLOMA_REF_772</div>
+    </div>
+</aside>
+
+<main>
+    <header>
+        <div>COORD: 0h 42.7m, +41° 16′ | FIELD: Andromeda_M31</div>
+        <div style="color: var(--text-dim);">UTC: <span id="clock">--:--:--</span></div>
+    </header>
+
+    <div class="chat-layout">
+        <section class="analysis-core">
+            <div id="chat-history">
+                <div class="entry">
+                    <div class="entry-meta"><span>SYSTEM_INITIALIZATION</span><span>AUTH: COMMANDER</span></div>
+                    <div class="content ai">Welcome to the GCI Analysis Core. Neural weights for Llama-3 are loaded. I am prepared to assist with your thesis on galactic morphological classification, redshift analysis, or stellar population synthesis. State your objective.</div>
+                </div>
+            </div>
+
+            <div class="input-module">
+                <div class="input-container">
+                    <input type="text" id="user-input" placeholder="Execute analysis query..." autocomplete="off">
+                    <button class="btn-execute" onclick="sendMessage()">RUN_QUERY</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="telemetry-panel" id="logs">
+            <div style="color: var(--accent); margin-bottom: 15px; font-size: 11px;">> LIVE_TELEMETRY_FEED</div>
+            </section>
+    </div>
+</main>
+
+<script>
+    const chatHistory = document.getElementById('chat-history');
+    const userInput = document.getElementById('user-input');
+    const logs = document.getElementById('logs');
+
+    function updateClock() {
+        document.getElementById('clock').innerText = new Date().toISOString().slice(11, 19);
+    }
+    setInterval(updateClock, 1000);
+
+    function addLog(text) {
+        const row = document.createElement('div');
+        row.className = 'tel-row';
+        row.innerHTML = `<span>${new Date().toLocaleTimeString()}</span><span class="tel-val">${text}</span>`;
+        logs.appendChild(row);
+        logs.scrollTop = logs.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        appendMessage('user', text);
+        userInput.value = '';
+        addLog("QUERY_SENT");
+
+        const entryDiv = document.createElement('div');
+        entryDiv.className = 'entry';
+        entryDiv.innerHTML = `
+            <div class="entry-meta"><span>LLAMA_3_INFERENCE</span><span>STATUS: STREAMING</span></div>
+            <div class="content ai"></div>
+        `;
+        const aiContentDiv = entryDiv.querySelector('.content.ai');
+        chatHistory.appendChild(entryDiv);
+
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                aiContentDiv.innerText += decoder.decode(value, { stream: true });
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
+            addLog("INFERENCE_SUCCESS");
+        } catch (e) {
+            aiContentDiv.innerText = "!! CRITICAL_ERROR: Link to Llama-3 core dropped.";
+            addLog("ERR_CONN_LOST");
+        }
+    }
+
+    function appendMessage(role, text) {
+        const entry = document.createElement('div');
+        entry.className = 'entry';
+        const label = role === 'user' ? 'COMMANDER_INPUT' : 'NEURAL_LINK';
+        entry.innerHTML = `
+            <div class="entry-meta"><span>${label}</span></div>
+            <div class="content ${role}">${text}</div>
+        `;
+        chatHistory.appendChild(entry);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    userInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+</script>
+</body>
+</html>
