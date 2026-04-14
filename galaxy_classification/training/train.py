@@ -4,7 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from galaxy_cnn import GalaxyCNN
+from galaxy_classification.models.cnn import GalaxyCNN
 
 import numpy as np
 import seaborn as sns

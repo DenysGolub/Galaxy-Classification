@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCI Core | Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400&family=Inter:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0a0a0c; 
+            --bg-panel: #111114;
+            --accent: #00d4ff; 
+            --accent-dim: rgba(0, 212, 255, 0.1);
+            --border-ui: #26262a;
+            --font-mono: 'Roboto Mono', monospace;
+            --text-main: #d1d5db;
+            --text-dim: #6b7280;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            background-color: var(--bg-base); 
+            color: var(--text-main); 
+            font-family: 'Inter', sans-serif; 
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* --- LOADING OVERLAY --- */
+        #loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-base);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: var(--font-mono);
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        .loader-box {
+            width: 300px;
+            border: 1px solid var(--border-ui);
+            padding: 20px;
+            position: relative;
+        }
+
+        .loader-bar {
+            height: 2px;
+            background: var(--accent);
+            width: 0%;
+            margin-top: 15px;
+            box-shadow: 0 0 10px var(--accent);
+            animation: loadProgress 2s forwards ease-in-out;
+        }
+
+        .loader-text {
+            font-size: 10px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        @keyframes loadProgress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        /* --- SCANLINE & GRID --- */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 5000;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        header {
+            padding: 40px;
+            border-bottom: 1px solid var(--border-ui);
+            background: linear-gradient(to bottom, #111114, #0a0a0c);
+            opacity: 0;
+            animation: fadeIn 1s forwards 2.2s;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .glitch-title {
+            font-family: var(--font-mono);
+            font-size: 24px;
+            letter-spacing: 4px;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .status-item span { color: var(--accent); }
+
+        /* Dashboard Grid */
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            padding: 40px;
+            opacity: 0;
+            animation: fadeIn 1s forwards 2.5s;
+        }
+
+        .module-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-ui);
+            padding: 30px;
+            transition: all 0.3s ease;
+            position: relative;
+            text-decoration: none;
+            color: inherit;
+            overflow: hidden;
+        }
+
+        .module-card:hover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            transform: translateY(-2px);
+        }
+
+        .module-card::after {
+            content: "GO_TO_MODULE →";
+            position: absolute;
+            bottom: 20px; right: 20px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--accent);
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        .module-card:hover::after { opacity: 1; }
+
+        .module-id {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--accent);
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .module-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .module-desc {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        footer {
+            margin-top: 60px;
+            padding: 40px;
+            border-top: 1px solid var(--border-ui);
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-dim);
+            opacity: 0;
+            animation: fadeIn 1s forwards 2.8s;
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 8px; height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0px rgba(74, 222, 128, 0.7); }
+            100% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="loader-box">
+        <div class="loader-text" id="loader-msg">INITIALIZING_KERNEL...</div>
+        <div class="loader-bar"></div>
+    </div>
+</div>
+
+<header>
+    <div class="container">
+        <h1 class="glitch-title">GCI_TERMINAL_CORE</h1>
+        <div class="status-bar">
+            <div class="status-item"><span class="pulse"></span> SYSTEM: <span>ONLINE</span></div>
+            <div class="status-item">KERNEL: <span>v3.0.4-STABLE</span></div>
+            <div class="status-item">LOC: <span>NEUTRAL_GRID_01</span></div>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <div class="module-grid">
+        <a href="/survey" class="module-card">
+            <span class="module-id">01 // NAV_SYSTEM</span>
+            <h2 class="module-title">Observation Deck</h2>
+            <p class="module-desc">Real-time deep sky survey interface. Access DESI DR10 and SDSS imagery with neural object identification.</p>
+        </a>
+
+        <a href="/assistant" class="module-card">
+            <span class="module-id">02 // AI_CORE</span>
+            <h2 class="module-title">Neural Assistant</h2>
+            <p class="module-desc">Interact with the GCI Large Language Model for astrophysical data synthesis and research summaries.</p>
+        </a>
+
+        <a href="/dossier" class="module-card">
+            <span class="module-id">03 // DATA_ARCHIVE</span>
+            <h2 class="module-title">Discovery Dossiers</h2>
+            <p class="module-desc">Review previously captured sectors, classification reports, and validated celestial detections.</p>
+        </a>
+
+        <a href="/settings" class="module-card">
+            <span class="module-id">04 // SYSTEM_CONFIG</span>
+            <h2 class="module-title">Kernel Settings</h2>
+            <p class="module-desc">Configure API endpoints, tensor stream buffers, and UI telemetry overlays.</p>
+        </a>
+    </div>
+</main>
+
+<footer>
+    <div class="container">
+        GLOBAL CONSOLE INTERFACE © 2026 // UNIFIED SKY SURVEY NETWORK // ENCRYPTED_CONNECTION
+    </div>
+</footer>
+
+<script>
+    const messages = [
+        "BOOTING_CORE...",
+        "SYNCING_TENSOR_STREAMS...",
+        "ESTABLISHING_ENCRYPTION...",
+        "ACCESS_GRANTED"
+    ];
+    let i = 0;
+    const msgEl = document.getElementById('loader-msg');
+    
+    const interval = setInterval(() => {
+        msgEl.innerText = messages[i];
+        i++;
+        if(i >= messages.length) clearInterval(interval);
+    }, 500);
+
+    // Hide loader after animation
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            const loader = document.getElementById('loader');
+            loader.style.opacity = '0';
+            setTimeout(() => loader.style.display = 'none', 800);
+        }, 2200);
+    });
+</script>
+
+</body>
+</html>

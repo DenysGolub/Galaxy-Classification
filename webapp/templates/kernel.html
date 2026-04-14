@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCI Console | Kernel Settings</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400&family=Inter:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0a0a0c; 
+            --bg-panel: #111114;
+            --accent: #00d4ff; 
+            --accent-dim: rgba(0, 212, 255, 0.1);
+            --border-ui: #26262a;
+            --font-mono: 'Roboto Mono', monospace;
+            --text-main: #d1d5db;
+            --text-dim: #6b7280;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background-color: var(--bg-base); 
+            color: var(--text-main); 
+            font-family: 'Inter', sans-serif; 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        /* Sidebar Navigation */
+        aside { 
+            width: 280px; 
+            background: var(--bg-panel); 
+            border-right: 1px solid var(--border-ui); 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        .nav-header { 
+            padding: 30px 24px; 
+            font-family: var(--font-mono); 
+            font-size: 12px; 
+            color: var(--accent); 
+            letter-spacing: 2px; 
+            border-bottom: 1px solid var(--border-ui); 
+        }
+
+        .settings-nav { padding: 10px 0; }
+        .nav-item { 
+            padding: 15px 24px; 
+            display: block; 
+            color: var(--text-dim); 
+            text-decoration: none; 
+            font-family: var(--font-mono); 
+            font-size: 11px; 
+            transition: 0.2s;
+            border-left: 2px solid transparent;
+        }
+        .nav-item:hover { color: var(--text-main); background: rgba(255,255,255,0.02); }
+        .nav-item.active { 
+            color: var(--accent); 
+            background: var(--accent-dim); 
+            border-left-color: var(--accent); 
+        }
+
+        /* Main Content Area */
+        main { flex-grow: 1; overflow-y: auto; padding: 60px; }
+        .content-header { margin-bottom: 40px; border-bottom: 1px solid var(--border-ui); padding-bottom: 20px; }
+        .content-header h1 { font-family: var(--font-mono); font-size: 20px; color: var(--accent); }
+        .content-header p { font-size: 12px; color: var(--text-dim); margin-top: 5px; }
+
+        /* Settings Components */
+        .settings-group { margin-bottom: 40px; max-width: 700px; }
+        .group-label { 
+            font-family: var(--font-mono); 
+            font-size: 10px; 
+            color: var(--accent); 
+            text-transform: uppercase; 
+            margin-bottom: 20px; 
+            display: block;
+            letter-spacing: 1px;
+        }
+
+        .setting-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 15px 0; 
+            border-bottom: 1px solid rgba(255,255,255,0.03); 
+        }
+
+        .setting-info h3 { font-size: 14px; font-weight: 400; }
+        .setting-info p { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+        /* Custom Inputs */
+        input[type="text"] {
+            background: #000;
+            border: 1px solid var(--border-ui);
+            color: var(--accent);
+            padding: 8px 12px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            width: 250px;
+            outline: none;
+        }
+        input[type="text"]:focus { border-color: var(--accent); }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .4s;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 14px; width: 14px; left: 3px; bottom: 3px;
+            background-color: var(--text-main);
+            transition: .4s;
+        }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(20px); background-color: #000; }
+
+        .btn-save {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .btn-save:hover { opacity: 0.9; }
+
+        .danger-zone { border: 1px solid var(--danger); padding: 20px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<aside>
+    <div class="nav-header">GCI_KERNEL_CFG</div>
+    <nav class="settings-nav">
+        <a href="#" class="nav-item active">01 // NEURAL_ENGINE</a>
+        <a href="#" class="nav-item">02 // TELEMETRY_UI</a>
+        <a href="#" class="nav-item">03 // NETWORK_STREAMS</a>
+        <a href="#" class="nav-item">04 // DATA_PURGE</a>
+    </nav>
+</aside>
+
+<main>
+    <div class="content-header">
+        <h1>NEURAL_ENGINE_CORE_V3</h1>
+        <p>Kernel Build: 0.9.4-BETA // Hardware: <span style="color:var(--accent)">NVIDIA_RTX_A6000_PRO</span></p>
+    </div>
+
+    <div class="settings-group">
+        <span class="group-label">Hardware Acceleration</span>
+        
+        <div class="setting-row">
+            <div class="setting-info">
+                <h3>Backend Engine</h3>
+                <p>Primary compute framework for tensor operations.</p>
+            </div>
+            <select class="coord-field" style="width: 150px; height: 30px; border: 1px solid var(--border-ui); background: #000; color: var(--accent);">
+                <option>PYTORCH_CUDA_12.1</option>
+                <option>TENSORRT_OPTIMIZED</option>
+                <option>CPU_FALLBACK</option>
+            </select>
+        </div>
+
+        <div class="setting-row">
+            <div class="setting-info">
+                <h3>VRAM Allocation</h3>
+                <p>Percentage of dedicated memory reserved for inference.</p>
+            </div>
+            <input type="text" value="75%" style="width: 60px; text-align: center;">
+        </div>
+    </div>
+
+    <div class="settings-group">
+        <span class="group-label">Model Architecture: ResNet-50_Modified</span>
+        
+        <div class="setting-row">
+            <div class="setting-info">
+                <h3>Active Weights</h3>
+                <p>Path to the trained .pth or .onnx checkpoint.</p>
+            </div>
+            <input type="text" value="/models/survey_classifier_v09.pth" style="width: 320px;">
+        </div>
+
+        <div class="setting-row">
+            <div class="setting-info">
+                <h3>Softmax Normalization</h3>
+                <p>Apply probability smoothing on class outputs.</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="setting-row">
+            <div class="setting-info">
+                <h3>Test-Time Augmentation (TTA)</h3>
+                <p>Run 4x rotations on capture to increase identification accuracy.</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div class="settings-group">
+        <span class="group-label">Astronomical Catalogs</span>
+        
+        <div class="setting-row">
+            <div class="setting-info">
+                <h3>Cross-Match Radius</h3>
+                <p>Search area for SIMBAD/NED queries (arcseconds).</p>
+            </div>
+            <input type="text" value="5.0" style="width: 60px; text-align: center;">
+        </div>
+
+        <div class="setting-row">
+            <div class="setting-info">
+                <h3>Auto-Log Discoveries</h3>
+                <p>Automatically write high-confidence hits to discovery_log.json.</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 15px;">
+        <button class="btn-save">COMMIT_CHANGES</button>
+        <button class="btn-save" style="background: transparent; border: 1px solid var(--accent); color: var(--accent);">RELOAD_WEIGHTS</button>
+    </div>
+</main>
+
+</body>
+</html>

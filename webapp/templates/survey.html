@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCI Console | Sky Survey Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400&family=Inter:wght@300;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.css" />
+    <style>
+
+#discovery-report {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(5, 5, 7, 0.98);
+    z-index: 2000;
+    display: none;
+    padding: 60px;
+    overflow-y: auto;
+    border: 4px solid var(--border-ui);
+}
+
+.report-container {
+    max-width: 900px;
+    margin: 0 auto;
+    border: 1px solid var(--border-ui);
+    background: var(--bg-panel);
+}
+
+.report-header {
+    padding: 30px;
+    border-bottom: 1px solid var(--border-ui);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 30px;
+    padding: 30px;
+}
+
+.report-photo {
+    width: 300px;
+    height: 300px;
+    border: 1px solid var(--accent);
+    background: #000;
+}
+
+.metadata-table {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    border-collapse: collapse;
+}
+
+.metadata-table td {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.label { color: #6b7280; width: 120px; }
+.value { color: var(--accent); }
+
+.assistant-brief {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(0, 212, 255, 0.03);
+    border-left: 2px solid var(--accent);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+        :root {
+            --bg-base: #0a0a0c; --bg-panel: #111114;
+            --accent: #00d4ff; --border-ui: #26262a;
+            --font-mono: 'Roboto Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg-base); color: #d1d5db; font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+
+        aside { width: 260px; background: var(--bg-panel); border-right: 1px solid var(--border-ui); display: flex; flex-direction: column; z-index: 20; }
+        .nav-header { padding: 24px; font-family: var(--font-mono); font-size: 11px; color: var(--accent); letter-spacing: 2px; border-bottom: 1px solid var(--border-ui); }
+        .nav-link { padding: 18px 24px; color: #6b7280; text-decoration: none; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.02); transition: 0.2s; }
+        
+        .capture-box { margin-top: auto; padding: 20px; border-top: 1px solid var(--border-ui); background: #000; }
+        .capture-label { font-family: var(--font-mono); font-size: 9px; color: var(--accent); margin-bottom: 10px; display: block; }
+        #capture-canvas { width: 100%; aspect-ratio: 1/1; border: 1px solid var(--border-ui); background: #050505; display: block; }
+
+        main { flex-grow: 1; display: flex; flex-direction: column; position: relative; }
+        header { 
+            height: 50px; padding: 0 24px; 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 1px solid var(--border-ui); background: var(--bg-base); 
+            font-family: var(--font-mono); font-size: 10px; z-index: 10; 
+        }
+
+        .viewport-container { flex-grow: 1; position: relative; background: #000; overflow: hidden; }
+        #aladin-lite-div { width: 100%; height: 100%; cursor: crosshair; }
+
+        /* Reticle */
+        .reticle-overlay {
+            position: absolute; top: 50%; left: 50%; width: 100px; height: 100px;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 100;
+        }
+        .reticle-line { position: absolute; background: rgba(0, 212, 255, 0.4); }
+        .reticle-h { top: 50%; left: 0; width: 100%; height: 1px; }
+        .reticle-v { left: 50%; top: 0; width: 1px; height: 100%; }
+        .reticle-c { position: absolute; top: 50%; left: 50%; width: 24px; height: 24px; border: 1px solid var(--accent); border-radius: 50%; transform: translate(-50%, -50%); }
+
+        .control-bar { height: 60px; background: var(--bg-panel); border-top: 1px solid var(--border-ui); display: flex; align-items: center; padding: 0 24px; gap: 15px; }
+        .btn-tool { background: transparent; border: 1px solid var(--border-ui); color: #d1d5db; padding: 8px 14px; font-size: 10px; font-family: var(--font-mono); cursor: pointer; border-radius: 2px; }
+        .btn-tool.active { background: var(--accent); color: #000; }
+
+        /* NUKE ALADIN UI 
+           v3 uses several specific container classes. This kills them all.
+        */
+        .aladin-container div[class*="aladin-"], 
+        .aladin-zoom-control, 
+        .aladin-layers-control, 
+        .aladin-status, 
+        .aladin-reticle, 
+        .aladin-attribution, 
+        .aladin-search-control, 
+        .aladin-logo, 
+        .aladin-info,
+        .aladin-fullscreen-control, 
+        .aladin-settings-control,
+        .aladin-crosshair { 
+            display: none !important; 
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+/* Custom Pop-up Styling */
+.modal-overlay {
+    position: absolute;
+    bottom: 80px; 
+    right: 24px; 
+    width: auto;
+    height: auto;
+    background: transparent;
+    display: none; 
+    z-index: 1000;
+    pointer-events: none; 
+}
+
+.modal-box {
+    width: 320px;
+    background: var(--bg-panel);
+    border: 1px solid var(--accent);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 212, 255, 0.1);
+    padding: 0;
+    pointer-events: auto; /* Re-enable clicks for the box itself */
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    background: var(--accent);
+    color: #000;
+    padding: 6px 12px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    cursor: default;
+}
+
+.modal-body {
+    padding: 15px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.5;
+    background: rgba(10, 10, 12, 0.95);
+}
+
+.prediction-value { color: var(--accent); font-weight: bold; }
+
+.modal-footer {
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-ui);
+    text-align: right;
+    background: var(--bg-panel);
+}
+
+.btn-close {
+    background: transparent;
+    border: 1px solid #6b7280;
+    color: #6b7280;
+    padding: 4px 10px;
+    font-size: 9px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+}
+.btn-close:hover { border-color: var(--accent); color: var(--accent); }
+
+
+.coord-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px 8px;
+    border: 1px solid var(--border-ui);
+}
+
+.coord-field {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #333;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    width: 70px;
+    outline: none;
+}
+
+.coord-field:focus {
+    border-bottom-color: var(--accent);
+}
+
+.coord-label {
+    font-size: 9px;
+    color: #6b7280;
+    font-family: var(--font-mono);
+}
+
+
+#loading-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #050507;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: var(--font-mono);
+    transition: opacity 0.8s ease-in-out;
+}
+
+.loader-content {
+    width: 400px;
+    text-align: left;
+}
+
+.loader-title {
+    color: var(--accent);
+    font-size: 18px;
+    letter-spacing: 4px;
+    margin-bottom: 10px;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+#loader-status {
+    font-size: 10px;
+    color: #6b7280;
+    margin-bottom: 20px;
+}
+
+.progress-container {
+    width: 100%;
+    height: 2px;
+    background: #1a1a1c;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+#progress-bar {
+    width: 0%;
+    height: 100%;
+    background: var(--accent);
+    box-shadow: 0 0 15px var(--accent);
+    transition: width 0.4s ease;
+}
+
+.loader-logs {
+    font-size: 9px;
+    color: #4ade80;
+    line-height: 1.8;
+    opacity: 0.7;
+    height: 60px;
+    overflow: hidden;
+}
+
+/* Hidden state for when loading finishes */
+.loader-finished {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Opening Animation Class */
+.modal-deploy {
+    animation: modalDeploy 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Closing Animation Class */
+.modal-retract {
+    animation: modalRetract 0.3s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+.correction-ui {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-ui);
+    display: none; /* Hidden until 'OVERRIDE' is clicked */
+}
+
+.correction-select {
+    background: #000;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 4px;
+    width: 100%;
+    outline: none;
+    margin-bottom: 10px;
+}
+
+.btn-confirm {
+    border-color: #4ade80;
+    color: #4ade80;
+}
+
+.btn-override {
+    border-color: #f87171;
+    color: #f87171;
+}
+
+@keyframes modalDeploy {
+    0% {
+        opacity: 0;
+        transform: scaleY(0.01) scaleX(0.1);
+        filter: brightness(5) blue(10px);
+        clip-path: inset(49% 0 49% 0);
+    }
+    40% {
+        opacity: 1;
+        transform: scaleY(0.01) scaleX(1);
+        clip-path: inset(49% 0 49% 0);
+    }
+    100% {
+        opacity: 1;
+        transform: scaleY(1) scaleX(1);
+        filter: brightness(1) blur(0);
+        clip-path: inset(0 0 0 0);
+    }
+}
+
+@keyframes modalRetract {
+    0% {
+        opacity: 1;
+        transform: scaleY(1) scaleX(1);
+        clip-path: inset(0 0 0 0);
+    }
+    60% {
+        opacity: 1;
+        transform: scaleY(0.01) scaleX(1);
+        clip-path: inset(49% 0 49% 0);
+    }
+    100% {
+        opacity: 0;
+        transform: scaleY(0.01) scaleX(0);
+        clip-path: inset(49% 50% 49% 50%);
+    }
+}
+
+@keyframes headerPulse {
+    0%, 100% { background: var(--accent); }
+    50% { background: #0088aa; }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+    </style>
+</head>
+<body>
+
+<div id="loading-screen">
+    <div class="loader-content">
+        <div class="loader-title">GCI_TERMINAL_v3.0.4</div>
+        <div id="loader-status">INITIALIZING_NEURAL_LINK...</div>
+        <div class="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+        <div class="loader-logs" id="loader-logs">
+            > Booting kernel...<br>
+            > Establishing satellite handshake...<br>
+            > Loading celestial coordinate system...
+        </div>
+    </div>
+</div>
+
+<aside>
+    <div class="nav-header">GCI_TERMINAL_CORE</div>
+    <a href="#" class="nav-link active">01 // OBSERVATION_DECK</a>
+    <a href="#" class="nav-link">02 // NEURAL_ASSISTANT</a>
+    <div class="capture-box">
+        <span class="capture-label">CENTER_FRAME_BUFFER (256x256)</span>
+        <canvas id="capture-canvas" width="256" height="256"></canvas>
+    </div>
+</aside>
+
+<main>
+    <header>
+        <div>SENSOR: <span id="active-survey-label" style="color:var(--accent)">DESI DR10</span></div>
+        <div id="coords-display">RA: SYNCING... | DEC: SYNCING...</div>
+        <div id="zoom-display">FOV: 0.00°</div>
+        <div style="color: #4ade80;">SIGNAL: ONLINE</div>
+    </header>
+
+    <div class="viewport-container">
+        <div id="aladin-lite-div"></div>
+        <div class="reticle-overlay">
+            <div class="reticle-line reticle-h"></div>
+            <div class="reticle-line reticle-v"></div>
+            <div class="reticle-c"></div>
+        </div>
+    </div>
+
+    
+
+   <div class="control-bar">
+    <button class="btn-tool active" onclick="updateSurvey('CDS/P/DESI-Legacy-Surveys/DR10/color', 'DESI DR10', this)">OPTICAL</button>
+    <button class="btn-tool" onclick="updateSurvey('CDS/P/SDSS9/color', 'SDSS9 Digital', this)">SDSS9</button>
+    
+    <div class="coord-input-group">
+        <span class="coord-label">GOTO_RA:</span>
+        <input type="text" id="manual-ra" class="coord-field" placeholder="195.163">
+        <span class="coord-label">DEC:</span>
+        <input type="text" id="manual-dec" class="coord-field" placeholder="2.583">
+        <button class="btn-tool" onclick="gotoCoordinates()" style="padding: 4px 8px;">EXECUTE</button>
+    </div>
+
+    <div style="flex-grow: 1;"></div>
+    <button class="btn-tool" style="border-color: var(--accent); color: var(--accent);" onclick="captureSector()">CAPTURE_DATA</button>
+    <button class="btn-tool" style="border-color: #4ade80; color: #4ade80;" onclick="predictCapturedObject()">RUN_PREDICTION</button>
+</div>
+
+   <div id="prediction-modal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span>NEURAL_ENGINE_OUTPUT</span>
+            <span style="opacity: 0.5;">v3.0.4</span>
+        </div>
+        <div class="modal-body">
+            <div id="modal-content">
+                STATUS: ANALYZING...<br>
+                <span style="color: #6b7280;">Waiting for tensor stream...</span>
+            </div>
+            
+            <div id="correction-ui" class="correction-ui">
+                <span style="font-size: 9px; color: #f87171; display: block; margin-bottom: 5px;">SELECT_CORRECT_CLASSIFICATION:</span>
+                <select id="manual-class" class="correction-select">
+                    <option value="star">STAR</option>
+                    <option value="galaxy">GALAXY</option>
+                    <option value="quasar">QUASAR</option>
+                    <option value="nebula">NEBULA</option>
+                    <option value="artifact">INSTRUMENT_ARTIFACT</option>
+                </select>
+                <button class="btn-tool" style="width: 100%;" onclick="submitCorrection()">SUBMIT_OVERRIDE</button>
+            </div>
+        </div>
+        <div class="modal-footer" id="modal-footer-actions">
+            <button class="btn-close" onclick="closeModal()">CANCEL</button>
+        </div>
+    </div>
+</div>
+</main>
+
+<script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js"></script>
+<script>
+
+// Add this at the very beginning of your script
+window.addEventListener('load', () => {
+    const progressBar = document.getElementById('progress-bar');
+    const loaderStatus = document.getElementById('loader-status');
+    const loaderLogs = document.getElementById('loader-logs');
+    const loadingScreen = document.getElementById('loading-screen');
+
+    const logs = [
+        "> Syncing with DESI DR10 archives...",
+        "> Calibrating optical sensors...",
+        "> Neural engine online.",
+        "> Handshake complete."
+    ];
+
+    let progress = 0;
+    let logIndex = 0;
+
+    const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 100) progress = 100;
+        
+        progressBar.style.width = progress + "%";
+
+        if (progress > 25 && logIndex === 0) { addLog(logs[0]); logIndex++; }
+        if (progress > 50 && logIndex === 1) { addLog(logs[1]); logIndex++; }
+        if (progress > 75 && logIndex === 2) { addLog(logs[2]); logIndex++; }
+
+        if (progress === 100) {
+            clearInterval(interval);
+            loaderStatus.innerText = "SYSTEM_READY";
+            addLog(logs[3]);
+            
+            // Fade out screen
+            setTimeout(() => {
+                loadingScreen.classList.add('loader-finished');
+            }, 500);
+        }
+    }, 150);
+
+    function addLog(msg) {
+        loaderLogs.innerHTML += `<br>${msg}`;
+    }
+});
+
+
+
+function gotoCoordinates() {
+    const raInput = document.getElementById('manual-ra').value;
+    const decInput = document.getElementById('manual-dec').value;
+
+    if (raInput && decInput && aladin) {
+        try {
+            const ra = parseFloat(raInput);
+            const dec = parseFloat(decInput);
+            
+            if (isNaN(ra) || isNaN(dec)) {
+                alert("NAVIGATION_ERROR: Invalid coordinate format.");
+                return;
+            }
+
+            aladin.gotoRaDec(ra, dec);
+            
+            // Visual feedback: briefly pulse the border
+            const group = document.querySelector('.coord-input-group');
+            group.style.borderColor = 'var(--accent)';
+            setTimeout(() => group.style.borderColor = 'var(--border-ui)', 500);
+            
+        } catch (err) {
+            console.error("Navigation failed:", err);
+        }
+    }
+}
+
+// Optional: Allow pressing "Enter" in the input fields to trigger navigation
+document.addEventListener('DOMContentLoaded', () => {
+    const inputs = ['manual-ra', 'manual-dec'];
+    inputs.forEach(id => {
+        document.getElementById(id).addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') gotoCoordinates();
+        });
+    });
+});
+
+    let aladin;
+    
+    A.init.then(() => {
+        aladin = A.aladin('#aladin-lite-div', {
+            survey: "CDS/P/DESI-Legacy-Surveys/DR10/color",
+            fov: 1.5, 
+            target: "195.163 2.583",
+            showZoomControl: false,
+            showLayersControl: false,
+            showStatus: false,
+            showFrame: false,
+            showLogo: false,
+            showAttribution: false,
+            showFullscreenControl: false,
+            showSearchControl: false,
+            showGotoControl: false,
+            fullScreen: false,
+            reticleColor: 'transparent',
+            cors: 'anonymous'
+        });
+
+        const updateTelemetry = () => {
+            const raDec = aladin.getRaDec();
+            const fov = aladin.getFov();
+            
+            if (raDec && fov) {
+                document.getElementById('coords-display').textContent = 
+                    `RA: ${raDec[0].toFixed(5)}° | DEC: ${raDec[1].toFixed(5)}°`;
+                document.getElementById('zoom-display').textContent = 
+                    `FOV: ${fov[0].toFixed(2)}°`;
+            }
+        };
+
+        aladin.on('positionChanged', updateTelemetry);
+        aladin.on('zoomChanged', updateTelemetry);
+        
+        setInterval(updateTelemetry, 100);
+    });
+
+    function updateSurvey(id, name, btn) {
+        if (aladin) {
+            aladin.setImageSurvey(id);
+            document.getElementById('active-survey-label').innerText = name;
+            document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+    }
+
+function captureSector() {
+    const aladinCanvas = document.querySelector('#aladin-lite-div canvas');
+    const capCanvas = document.getElementById('capture-canvas');
+    const ctx = capCanvas.getContext('2d');
+
+    if (aladinCanvas) {
+        // Trigger visual shutter effect
+        capCanvas.classList.remove('shutter-active');
+        void capCanvas.offsetWidth; // Force reflow
+        capCanvas.classList.add('shutter-active');
+
+        const sX = (aladinCanvas.width / 2) - 128;
+        const sY = (aladinCanvas.height / 2) - 128;
+        ctx.clearRect(0, 0, 256, 256);
+        ctx.drawImage(aladinCanvas, sX, sY, 256, 256, 0, 0, 256, 256);
+    }
+}
+
+
+async function predictCapturedObject() {
+    const modal = document.getElementById('prediction-modal');
+    const box = modal.querySelector('.modal-box');
+    const content = document.getElementById('modal-content');
+    const footer = document.getElementById('modal-footer-actions');
+    const correctionUI = document.getElementById('correction-ui');
+
+    // Reset UI state
+    correctionUI.style.display = 'none';
+    box.classList.remove('modal-retract');
+    box.classList.add('modal-deploy');
+    modal.style.display = 'flex';
+
+    content.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+            <div style="display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border-ui); border-radius: 50%; border-top-color: var(--accent); animation: spin 1s linear infinite; margin-bottom: 10px;"></div>
+            <br>STATUS: PROCESSING...<br>
+            <span style="color: var(--accent);">INITIALIZING PYTORCH KERNEL...</span>
+        </div>
+    `;
+    footer.innerHTML = `<button class="btn-close" onclick="closeModal()">CANCEL</button>`;
+
+    try {
+        const capCanvas = document.getElementById('capture-canvas');
+        const imageData = capCanvas.toDataURL('image/jpeg');
+
+        // Get current coordinates from Aladin
+        const coords = aladin ? aladin.getRaDec() : [0, 0];
+        const surveyLabel = document.getElementById('active-survey-label').textContent;
+
+        const fov = aladin ? aladin.getFov()[0] : 0;
+        const response = await fetch('http://127.0.0.1:5000/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                image: imageData,
+                ra: coords[0] || 0,
+                dec: coords[1] || 0,
+                fov: fov || 0,
+                survey: surveyLabel
+            })
+        });
+
+        const data = await response.json();
+
+        // Store for potential correction
+        window.lastPrediction = data;
+
+        setTimeout(() => {
+            content.innerHTML = `
+                IDENTIFICATION: <span class="prediction-value">${data.prediction.toUpperCase()}</span><br>
+                CONFIDENCE: <span class="prediction-value">${data.confidence}%</span><br>
+                OBSERVATION_ID: <span class="prediction-value">${data.observation_id}</span><br>
+                <span style="color: #6b7280; font-size: 9px;">VALIDATE_NEURAL_LOGIC?</span>
+            `;
+
+            // Add Confirm/Override buttons
+            footer.innerHTML = `
+                <button class="btn-tool btn-override" onclick="showCorrectionUI()">OVERRIDE</button>
+                <button class="btn-tool btn-confirm" onclick="confirmPrediction()">CONFIRM</button>
+            `;
+        }, 600);
+
+    } catch (error) {
+        content.innerHTML = `<span style="color: #ef4444;">ERROR: NO_RESPONSE</span>`;
+    }
+}
+
+function showCorrectionUI() {
+    document.getElementById('correction-ui').style.display = 'block';
+    document.getElementById('modal-footer-actions').innerHTML = `<button class="btn-close" onclick="closeModal()">ABORT</button>`;
+}
+
+async function confirmPrediction() {
+    const content = document.getElementById('modal-content');
+    const data = window.lastPrediction;
+    if (!data || !data.observation_id) {
+        content.innerHTML = `<span style="color: #ef4444;">ERROR: MISSING_OBSERVATION_ID</span>`;
+        return;
+    }
+
+    try {
+        const response = await fetch(`http://127.0.0.1:5000/api/observation/${encodeURIComponent(data.observation_id)}/classify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                predicted_class: data.prediction,
+                confidence: data.confidence / 100,
+                model_version: 'best_0.8200.pth',
+                is_manual: false
+            })
+        });
+
+        if (!response.ok) {
+            const result = await response.json();
+            content.innerHTML = `<span style="color: #ef4444;">ERROR: ${result.error || 'CONFIRM_FAILED'}</span>`;
+            return;
+        }
+
+        content.innerHTML = `<span style="color: #4ade80;">LOGGED: POSITIVE_VERIFICATION</span><br><span style="font-size:9px">Classification saved to archive.</span>`;
+        setTimeout(closeModal, 1000);
+    } catch (err) {
+        console.error('Confirm failed:', err);
+        content.innerHTML = `<span style="color: #ef4444;">ERROR: NETWORK_FAILURE</span>`;
+    }
+}
+
+async function submitCorrection() {
+    const newClass = document.getElementById('manual-class').value;
+    const content = document.getElementById('modal-content');
+    const data = window.lastPrediction;
+
+    if (!data || !data.observation_id) {
+        content.innerHTML = `<span style="color: #ef4444;">ERROR: MISSING_OBSERVATION_ID</span>`;
+        return;
+    }
+
+    try {
+        const response = await fetch(`http://127.0.0.1:5000/api/observation/${encodeURIComponent(data.observation_id)}/classify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                predicted_class: newClass,
+                confidence: 1.0,
+                model_version: 'best_0.8200.pth',
+                is_manual: true,
+                original_prediction: data.prediction,
+                comments: 'User override'
+            })
+        });
+
+        if (!response.ok) {
+            const result = await response.json();
+            content.innerHTML = `<span style="color: #ef4444;">ERROR: ${result.error || 'OVERRIDE_FAILED'}</span>`;
+            return;
+        }
+
+        content.innerHTML = `<span style="color: #f87171;">LOGGED: MANUAL_OVERRIDE</span><br>
+                             <span style="font-size:9px">Corrected to: ${newClass.toUpperCase()}</span>`;
+        setTimeout(closeModal, 1500);
+    } catch (err) {
+        console.error('Override failed:', err);
+        content.innerHTML = `<span style="color: #ef4444;">ERROR: NETWORK_FAILURE</span>`;
+    }
+}
+
+function closeModal() {
+    const modal = document.getElementById('prediction-modal');
+    const box = modal.querySelector('.modal-box');
+
+    box.classList.remove('modal-deploy');
+    box.classList.add('modal-retract');
+
+    setTimeout(() => {
+        modal.style.display = 'none';
+        box.classList.remove('modal-retract');
+    }, 300);
+}
+
+function closeModal() {
+    const modal = document.getElementById('prediction-modal');
+    const box = modal.querySelector('.modal-box');
+
+    box.classList.remove('modal-deploy');
+    box.classList.add('modal-retract');
+
+    setTimeout(() => {
+        modal.style.display = 'none';
+        box.classList.remove('modal-retract');
+    }, 300);
+}
+
+
+
+async function openReport() {
+    const d = window.currentDiscovery;
+    const reportUI = document.getElementById('discovery-report');
+    if (!d) return;
+    
+    // Smooth transition in
+    reportUI.style.display = 'block';
+    setTimeout(() => reportUI.classList.add('visible'), 10);
+
+    const ra = parseFloat(d.ra);
+    const dec = parseFloat(d.dec);
+
+    document.getElementById('report-img').src = d.img;
+    document.getElementById('res-class').innerText = d.prediction;
+    document.getElementById('res-conf').innerText = d.confidence + "%";
+    document.getElementById('res-coords').innerText = `${ra.toFixed(5)}, ${dec.toFixed(5)}`;
+    document.getElementById('report-timestamp').innerText = new Date().toUTCString();
+    
+    const briefBox = document.getElementById('report-brief');
+    const idField = document.getElementById('res-simbad-id');
+    idField.innerText = "QUERYING ARCHIVES...";
+
+    let externalData = { info: "No catalog match found within 5 arcsec." };
+
+    try {
+        const url = `http://127.0.0.1:5000/legacy?ra=${ra}&dec=${dec}&radius=0.01`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data && data.sources && data.sources.length > 0) {
+            // Sorting by distance to get the absolute closest object
+            const best = data.sources.sort((a, b) => {
+                const distA = Math.hypot(a.ra - ra, a.dec - dec);
+                const distB = Math.hypot(b.ra - ra, b.dec - dec);
+                return distA - distB;
+            })[0];
+
+            const mag_r = best.flux_r > 0 ? (-2.5 * Math.log10(best.flux_r) + 22.5).toFixed(2) : "N/A";
+            const g_r = (best.flux_g > 0 && best.flux_r > 0) 
+                        ? ((-2.5 * Math.log10(best.flux_g) + 22.5) - (-2.5 * Math.log10(best.flux_r) + 22.5)).toFixed(2) 
+                        : "N/A";
+
+            idField.innerText = "LEGACY DR10";
+            document.getElementById('res-simbad-type').innerText = best.type || "OBJ";
+            document.getElementById('res-simbad-mag').innerText = mag_r;
+            document.getElementById('res-simbad-z').innerText = `g-r: ${g_r}`;
+            externalData.info = `Legacy Match: ${best.type}, mag_r: ${mag_r}, g-r: ${g_r}`;
+        } else {
+            // --- STEP 2: Fallback to SIMBAD TAP (Global) ---
+            const adql = `SELECT TOP 1 main_id,ot_type,mag_v FROM basic WHERE CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',${ra},${dec},0.002))=1`;
+            const simbadUrl = `https://simbad.u-strasbg.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(adql)}`;
+            
+            const sRes = await fetch(simbadUrl).then(r => r.json());
+            if (sRes.data && sRes.data.length > 0) {
+                const s = sRes.data[0];
+                idField.innerText = s[0];
+                document.getElementById('res-simbad-type').innerText = s[1];
+                document.getElementById('res-simbad-mag').innerText = s[2] || "N/A";
+                externalData.info = `SIMBAD Match: ${s[0]}, Type: ${s[1]}`;
+            } else {
+                idField.innerText = "NO NEIGHBOR FOUND";
+            }
+        }
+    } catch (e) {
+        console.error("Metadata Fetch Failed", e);
+        idField.innerText = "OFFLINE";
+    }
+
+    // --- STEP 3: Chat Synthesis ---
+    briefBox.innerText = "SYNTHESIZING...";
+    try {
+        const chatPrompt = `Summarize: Object at ${ra}, ${dec} predicted as ${d.prediction}. Catalog Data: ${externalData.info}`;
+        const chatRes = await fetch('http://127.0.0.1:5000/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: chatPrompt })
+        });
+        const reader = chatRes.body.getReader();
+        briefBox.innerText = "";
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            briefBox.innerText += new TextDecoder().decode(value);
+        }
+    } catch (e) { briefBox.innerText = "AI Synthesis failed. View raw metadata above."; }
+}
+
+function closeReport() {
+
+    document.getElementById('discovery-report').style.display = 'none';
+
+}
+
+function closeModal() {
+
+    document.getElementById('prediction-modal').style.display = 'none';
+
+}
+
+</script>
+
+<div id="discovery-report">
+    <div class="report-container">
+        <div class="report-header">
+            <div>
+                <h2 style="font-family: var(--font-mono); color: var(--accent); letter-spacing: 2px;">DISCOVERY_DOSSIER</h2>
+                <p style="font-size: 10px; opacity: 0.5;">GCI_SYSTEMS_REPORT // <span id="report-timestamp"></span></p>
+            </div>
+            <button class="btn-tool" onclick="closeReport()">X CLOSE_ENVELOPE</button>
+        </div>
+        
+        <div class="report-grid">
+            <div class="side-panel">
+                <img id="report-img" class="report-photo" src="" alt="Subject Capture">
+                <div style="margin-top: 20px;">
+                  <table class="metadata-table">
+    <tr><td class="label">CLASSIFICATION</td><td class="value" id="res-class">---</td></tr>
+    <tr><td class="label">CONFIDENCE</td><td class="value" id="res-conf">---</td></tr>
+    <tr><td class="label">COORDS_RA/DEC</td><td class="value" id="res-coords">---</td></tr>
+    <tr><td class="label">NEAREST_OBJ</td><td class="value" id="res-simbad-id">SEARCHING...</td></tr>
+    <tr><td class="label">OBJ_TYPE</td><td class="value" id="res-simbad-type">---</td></tr>
+    <tr><td class="label">MAGNITUDE</td><td class="value" id="res-simbad-mag">---</td></tr>
+    <tr><td class="label">REDSHIFT (z)</td><td class="value" id="res-simbad-z">---</td></tr>
+</table>
+                </div>
+            </div>
+            
+            <div class="main-panel">
+                <h3 style="font-family: var(--font-mono); font-size: 12px; margin-bottom: 10px;">NEURAL_INTELLIGENCE_BRIEF:</h3>
+                <div id="report-brief" class="assistant-brief">
+                    Analyzing tensor data and generating astrophysical context...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
