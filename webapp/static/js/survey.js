@@ -146,6 +146,51 @@ function captureSector() {
     }
 }
 
+async function gatherMetadata(ra, dec) {
+    try {
+        console.log(`[METADATA] Requesting metadata for RA=${ra}, DEC=${dec}`);
+        const response = await fetch('http://127.0.0.1:5000/metadata', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ra: ra,
+                dec: dec
+            })
+        });
+
+        const metadata = await response.json();
+        
+        console.log("=== OBSERVATION METADATA ===");
+        console.log(`RA: ${ra}°, DEC: ${dec}°`);
+        console.log("--- PHOTOMETRIC DATA ---");
+        console.log(`Object ID: ${metadata.phot_objid || 'N/A'}`);
+        console.log(`Object Type: ${metadata.phot_type || 'N/A'}`);
+        console.log(`Magnitudes - u: ${metadata.u_mag || 'N/A'}, g: ${metadata.g_mag || 'N/A'}, r: ${metadata.r_mag || 'N/A'}, i: ${metadata.i_mag || 'N/A'}, z: ${metadata.z_mag || 'N/A'}`);
+        console.log(`Petrosian Radius R50 (r-band): ${metadata.petroR50_r || 'N/A'}`);
+        console.log(`Petrosian Radius R90 (r-band): ${metadata.petroR90_r || 'N/A'}`);
+        console.log("--- SPECTROSCOPIC DATA ---");
+        console.log(`Spectroscopic Object ID: ${metadata.specobjid || 'N/A'}`);
+        console.log(`Redshift (z): ${metadata.z || 'N/A'}`);
+        console.log(`Velocity Dispersion: ${metadata.velDisp || 'N/A'}`);
+        console.log(`Class: ${metadata.class || 'N/A'}`);
+        console.log(`SubClass: ${metadata.subClass || 'N/A'}`);
+        console.log(`Plate: ${metadata.plate || 'N/A'}`);
+        console.log(`MJD: ${metadata.mjd || 'N/A'}`);
+        console.log(`Fiber ID: ${metadata.fiberID || 'N/A'}`);
+        
+        if (metadata.error) {
+            console.warn(`[METADATA] Error: ${metadata.error}`);
+        }
+        
+        console.log("=== END METADATA ===");
+        return metadata;
+        
+    } catch (error) {
+        console.error("[METADATA] Failed to gather metadata:", error);
+        return {};
+    }
+}
+
 
 async function predictCapturedObject() {
     const modal = document.getElementById('prediction-modal');
@@ -178,6 +223,10 @@ async function predictCapturedObject() {
         const surveyLabel = document.getElementById('active-survey-label').textContent;
 
         const fov = aladin ? aladin.getFov()[0] : 0;
+        
+        // Gather and log metadata for the captured coordinates
+        await gatherMetadata(coords[0], coords[1]);
+        
         const response = await fetch('http://127.0.0.1:5000/predict', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

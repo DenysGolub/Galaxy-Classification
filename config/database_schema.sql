@@ -1,17 +1,8 @@
 -- Galaxy Classification Database Schema
--- SQLite database for storing galaxy observations, classifications, and user interactions
+-- SQLite database for storing galaxy observations and classifications
 
 -- Enable foreign keys
 PRAGMA foreign_keys = ON;
-
--- Users table (for future multi-user support)
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    preferences TEXT -- JSON string for user preferences
-);
 
 -- Galaxy observations table
 CREATE TABLE IF NOT EXISTS observations (
@@ -23,9 +14,7 @@ CREATE TABLE IF NOT EXISTS observations (
     image_path TEXT, -- Path to stored image file
     image_data BLOB, -- Optional: store image directly as blob
     captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    fov REAL, -- Field of view in degrees
-    created_by INTEGER, -- User ID (nullable for now)
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    fov REAL -- Field of view in degrees
 );
 
 -- Classification results table
@@ -38,9 +27,7 @@ CREATE TABLE IF NOT EXISTS classifications (
     classified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_manual_override BOOLEAN DEFAULT FALSE,
     manual_class TEXT, -- If manually corrected
-    corrected_by INTEGER, -- User who made the correction
-    FOREIGN KEY (observation_id) REFERENCES observations(id),
-    FOREIGN KEY (corrected_by) REFERENCES users(id)
+    FOREIGN KEY (observation_id) REFERENCES observations(id)
 );
 
 -- Astronomical metadata from external catalogs
@@ -66,10 +53,8 @@ CREATE TABLE IF NOT EXISTS astronomical_metadata (
 CREATE TABLE IF NOT EXISTS chat_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id TEXT UNIQUE NOT NULL,
-    user_id INTEGER,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    title TEXT, -- Optional session title
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    title TEXT -- Optional session title
 );
 
 -- Individual chat messages
@@ -100,14 +85,12 @@ CREATE TABLE IF NOT EXISTS model_metrics (
 CREATE TABLE IF NOT EXISTS user_feedback (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     observation_id INTEGER NOT NULL,
-    user_id INTEGER,
     original_prediction TEXT,
     user_correction TEXT NOT NULL,
     feedback_type TEXT, -- "correction", "confirmation", "uncertain"
     comments TEXT,
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (observation_id) REFERENCES observations(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (observation_id) REFERENCES observations(id)
 );
 
 -- Indexes for performance

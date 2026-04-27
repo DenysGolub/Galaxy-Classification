@@ -17,8 +17,8 @@ CORS(app)
 register_all_routes(app)
 
 def main():
-    """Main entry point for the Flask application"""
-    app.run(debug=True, port=5000)
+    # Disable the re-loader to stop the "Exit 3" loop
+    app.run(debug=True, use_reloader=False, port=5000)
 
 if __name__ == '__main__':
     main()

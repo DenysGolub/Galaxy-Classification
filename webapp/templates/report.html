@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GCI // OBJECT_REPORT_${id}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050507;
+            --panel: #0d0d11;
+            --accent: #00d4ff;
+            --border: #1f2229;
+            --text: #e0e0e0;
+            --dim: #636e7b;
+            --success: #4ade80;
+            --font-mono: 'Roboto Mono', monospace;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .dossier-container {
+            width: 100%;
+            max-width: 1100px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            padding: 40px;
+            position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .report-header {
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start; /* Prevent overlapping in header */
+        }
+
+        .obj-id { font-family: var(--font-mono); font-size: 24px; color: var(--accent); font-weight: 700; word-break: break-all; max-width: 70%; }
+        .timestamp { font-family: var(--font-mono); font-size: 10px; color: var(--dim); margin-bottom: 5px; }
+
+        /* Fixed Grid Layout to prevent overlapping */
+        .grid { 
+            display: grid; 
+            grid-template-columns: 400px 1fr; /* Fixed width for visual to prevent squeezing */
+            gap: 40px; 
+        }
+
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
+            .dossier-container { padding: 20px; }
+        }
+
+        .visual-capture {
+            border: 1px solid var(--border);
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            height: 400px;
+        }
+
+        .main-img { width: 100%; height: 100%; object-fit: contain; filter: contrast(1.1); }
+        
+        .overlay-stats {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--accent);
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Prediction Badge Styles */
+        .prediction-block {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid var(--success);
+            background: rgba(74, 222, 128, 0.05);
+        }
+
+        .prediction-label { font-family: var(--font-mono); font-size: 10px; color: var(--success); margin-bottom: 8px; text-transform: uppercase; }
+        .prediction-value { font-size: 22px; font-weight: 900; color: #fff; letter-spacing: 1px; }
+
+        .data-section { margin-bottom: 35px; }
+        .section-title {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--dim);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+
+        .stats-table { width: 100%; border-collapse: collapse; }
+        .stats-table td { 
+            padding: 10px 0; 
+            font-family: var(--font-mono); 
+            font-size: 13px; 
+            border-bottom: 1px solid rgba(255,255,255,0.05); 
+        }
+        .label { color: var(--dim); }
+        .value { color: var(--text); text-align: right; }
+        .high-value { color: var(--accent); font-weight: 700; }
+
+        .mag-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            gap: 10px;
+        }
+        .mag-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            padding: 12px 5px;
+            text-align: center;
+        }
+        .mag-box span { display: block; font-family: var(--font-mono); }
+        .m-label { font-size: 9px; color: var(--dim); margin-bottom: 4px; }
+        .m-val { font-size: 12px; color: var(--accent); font-weight: bold; }
+
+        .btn-print {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 8px 15px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-print:hover { background: var(--accent); color: #000; }
+    </style>
+</head>
+<body>
+
+<div class="dossier-container">
+    <div class="report-header">
+        <div>
+            <div class="timestamp">GCI_RECON_REPORT // SYS_4.0</div>
+            <div class="obj-id" id="obj-title">LOADING_OBJECT...</div>
+        </div>
+        <button class="btn-print" onclick="window.print()">[ EXPORT_RECORD ]</button>
+    </div>
+
+    <div class="grid">
+        <div class="visual-col">
+            <div class="section-title">Visual Capture</div>
+            <div class="visual-capture">
+                <img id="main-image" src="" class="main-img" alt="Galaxy Image">
+                <div class="overlay-stats">
+                    <span id="survey-label">SURVEY: --</span>
+                    <span id="coord-overlay">--</span>
+                </div>
+            </div>
+
+            <div class="prediction-block">
+                <div class="prediction-label">AI Morphology Classification</div>
+                <div class="prediction-value" id="ai-prediction">ANALYZING...</div>
+                <div style="margin-top: 5px; font-family: var(--font-mono); font-size: 10px; color: var(--success); opacity: 0.8;">
+                    CONFIDENCE: <span id="ai-confidence">--</span>%
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; font-size: 11px; color: var(--dim); font-family: var(--font-mono); line-height: 1.4;">
+                CRITICAL: This dossier is an automated synthesis of SDSS/Vizier metadata and local CNN morphological inference.
+            </div>
+        </div>
+
+        <div class="data-col">
+            <div class="data-section">
+                <div class="section-title">Spectroscopic Signature</div>
+                <table class="stats-table">
+                    <tr><td class="label">Redshift (z)</td><td class="value high-value" id="z-val">--</td></tr>
+                    <tr><td class="label">Spectral Class</td><td class="value" id="spec-class">--</td></tr>
+                    <tr><td class="label">Subclass</td><td class="value" id="sub-class">--</td></tr>
+                    <tr><td class="label">Vel. Dispersion</td><td class="value" id="vel-disp">--</td></tr>
+                </table>
+            </div>
+
+            <div class="data-section">
+                <div class="section-title">Photometry (AB Magnitudes)</div>
+                <div class="mag-grid">
+                    <div class="mag-box"><span class="m-label">U</span><span class="m-val" id="u-mag">--</span></div>
+                    <div class="mag-box"><span class="m-label">G</span><span class="m-val" id="g-mag">--</span></div>
+                    <div class="mag-box"><span class="m-label">R</span><span class="m-val" id="r-mag">--</span></div>
+                    <div class="mag-box"><span class="m-label">I</span><span class="m-val" id="i-mag">--</span></div>
+                    <div class="mag-box"><span class="m-label">Z</span><span class="m-val" id="z-mag">--</span></div>
+                </div>
+            </div>
+
+            <div class="data-section">
+                <div class="section-title">Catalog Information</div>
+                <table class="stats-table">
+                    <tr><td class="label">SDSS ObjID</td><td class="value" id="sdss-id">--</td></tr>
+                    <tr><td class="label">Petro R50 (r)</td><td class="value" id="r50">--</td></tr>
+                    <tr><td class="label">Petro R90 (r)</td><td class="value" id="r90">--</td></tr>
+                    <tr><td class="label">Obs ID</td><td class="value" id="internal-id" style="font-size: 10px; color: var(--dim);">--</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadReport() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const objectId = urlParams.get('id');
+        if (!objectId) return;
+
+        try {
+            const response = await fetch(`/api/observation/${objectId}`);
+            const data = await response.json();
+
+            // Header & Image
+            document.getElementById('obj-title').innerText = `OBJECT: ${data.phot_objid || data.id}`;
+            document.getElementById('main-image').src = data.image_data;
+            document.getElementById('coord-overlay').innerText = `RA: ${data.ra.toFixed(4)} DEC: ${data.dec.toFixed(4)}`;
+            document.getElementById('survey-label').innerText = `SOURCE: ${data.survey_source || 'DESI'}`;
+
+            // AI Model Prediction
+            document.getElementById('ai-prediction').innerText = data.classification ? data.classification.toUpperCase() : 'UNKNOWN';
+            document.getElementById('ai-confidence').innerText = data.confidence ? (data.confidence * 100).toFixed(1) : '0.0';
+
+            // Spectroscopy
+            document.getElementById('z-val').innerText = data.z ? data.z.toFixed(5) : 'MISSING';
+            document.getElementById('spec-class').innerText = data.class || '--';
+            document.getElementById('sub-class').innerText = data.subClass || 'NONE';
+            document.getElementById('vel-disp').innerText = data.velDisp ? `${data.velDisp.toFixed(1)} km/s` : '--';
+            
+            // Photometry
+            document.getElementById('u-mag').innerText = data.u_mag?.toFixed(2) || '--';
+            document.getElementById('g-mag').innerText = data.g_mag?.toFixed(2) || '--';
+            document.getElementById('r-mag').innerText = data.r_mag?.toFixed(2) || '--';
+            document.getElementById('i-mag').innerText = data.i_mag?.toFixed(2) || '--';
+            document.getElementById('z-mag').innerText = data.z_mag?.toFixed(2) || '--';
+
+            // Structure
+            document.getElementById('sdss-id').innerText = data.phot_objid || 'N/A';
+            document.getElementById('r50').innerText = data.petroR50_r ? `${data.petroR50_r
