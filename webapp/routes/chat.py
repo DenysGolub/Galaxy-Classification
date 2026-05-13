@@ -9,24 +9,37 @@ def register_chat_routes(app):
     @app.route('/api/chat/history/<session_id>', methods=['GET'])
     def get_chat_history(session_id):
         """Get chat history for a session"""
-        session_pk = db.get_or_create_chat_session(session_id, "GCI Assistant Session")
+        session_pk = db.get_or_create_chat_session(session_id, "GCS Assistant Session")
         messages = db.get_chat_history(session_pk)
         return jsonify(messages)
 
+    @app.route('/api/chat/sessions', methods=['GET'])
+    def list_chat_sessions():
+        """List all saved chat sessions."""
+        sessions = db.get_chat_sessions()
+        return jsonify(sessions)
+
     @app.route('/chat', methods=['POST'])
     def chat():
-        """Handle chat messages with AI assistant"""
         user_message = request.json.get("message")
         session_id = request.json.get("session_id", "default")
+        mode = request.json.get("mode", "expert")  
 
-        # Ensure session exists and get its integer primary key
-        session_pk = db.get_or_create_chat_session(session_id, "GCI Assistant Session")
+        session_pk = db.get_or_create_chat_session(session_id, "GCS Assistant Session")
 
-        # Save user message
         db.save_chat_message(session_pk, "user", user_message)
 
-        # Generate response
-        response_generator = chat_service.generate_response(user_message, session_id)
+        if mode == "database":
+            database_response = chat_service.get_dynamic_database_response(user_message)
+            if database_response is not None:
+                db.save_chat_message(session_pk, "assistant", database_response)
+                return Response(
+                    database_response,
+                    mimetype='text/plain',
+                    headers={'X-DB-Query': 'true', 'X-Response-Mode': 'database'}
+                )
+
+        response_generator = chat_service.generate_response(user_message, session_id, mode=mode)
 
         def generate():
             full_response = ""
@@ -34,7 +47,6 @@ def register_chat_routes(app):
                 full_response += token
                 yield token
 
-            # Save AI response to database
             db.save_chat_message(session_pk, "assistant", full_response)
 
-        return Response(generate(), mimetype='text/plain')
+        return Response(generate(), mimetype='text/plain', headers={'X-Response-Mode': mode})

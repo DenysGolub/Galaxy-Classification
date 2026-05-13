@@ -8,6 +8,25 @@ import astropy.units as u
 prediction_service = PredictionService()
 db = GalaxyDatabase()
 
+def has_catalog_metadata(metadata):
+    """Return true when the metadata response contains an actual catalog match."""
+    if not metadata or metadata.get("error"):
+        return False
+
+    match_keys = (
+        "phot_objid",
+        "specobjid",
+        "phot_type",
+        "class",
+        "u_mag",
+        "g_mag",
+        "r_mag",
+        "i_mag",
+        "z_mag",
+        "z",
+    )
+    return any(metadata.get(key) is not None for key in match_keys)
+
 def gather_sdss_metadata(ra, dec):
     """
     Gather SDSS metadata for given RA/DEC coordinates.
@@ -106,11 +125,23 @@ def register_prediction_routes(app):
             fov = request.json.get('fov')
 
             # Save observation to database
+#TODO: Add logic for saving metdata only when user confirms prediction
+            
             obs_db_id = db.save_observation(observation_id, ra, dec, survey_source, data, fov)
 
+
+            metadata = gather_sdss_metadata(ra, dec)
+            if has_catalog_metadata(metadata):
+                db.save_astronomical_metadata(obs_db_id, "SDSS DR19", metadata)
+                print("[METADATA] Saved catalog metadata to database")
+            else:
+                print("[METADATA] No catalog metadata saved")
             # Make prediction
             result = prediction_service.predict_galaxy(data)
             result["observation_id"] = observation_id
+            result["model_version"] = prediction_service.model_version
+            result["metadata"] = metadata
+            result["metadata_found"] = has_catalog_metadata(metadata)
 
             print(f"ANALYSIS COMPLETE: {result['prediction']}")
             return jsonify(result)

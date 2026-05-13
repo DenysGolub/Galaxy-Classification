@@ -1,5 +1,6 @@
 from flask import request, jsonify
 from galaxy_classification.database import GalaxyDatabase
+from config.model_config import MODEL_VERSION
 
 db = GalaxyDatabase()
 
@@ -29,6 +30,6 @@ def register_stats_routes(app):
 
         db.save_user_feedback(internal_id, original_prediction, user_correction,
                              feedback_type, comments)
-        db.save_classification(internal_id, 'best_0.8200.pth', user_correction,
+        db.save_classification(internal_id, MODEL_VERSION, user_correction,
                               1.0, is_manual=True, manual_class=user_correction)
         return jsonify({"status": "success"})

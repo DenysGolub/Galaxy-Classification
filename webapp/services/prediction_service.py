@@ -5,15 +5,18 @@ import uuid
 from PIL import Image
 import torchvision.transforms as transforms
 
-from galaxy_classification.models.cnn import GalaxyCNN
+from galaxy_classification.models.neural_network import GalaxyCNN
+from config.model_config import MODEL_PATH, MODEL_VERSION
 
 class PredictionService:
     def __init__(self):
+        self.model_path = MODEL_PATH
+        self.model_version = MODEL_VERSION
         self.model = GalaxyCNN()
         try:
-            self.model.load_state_dict(torch.load('models/best_0.8200.pth', map_location='cpu'))
+            self.model.load_state_dict(torch.load(self.model_path, map_location='cpu'))
             self.model.eval()
-            print("AI CORE: Neural weights loaded successfully.")
+            print(f"AI CORE: Neural weights loaded successfully ({self.model_version}).")
         except Exception as e:
             print(f"FATAL: Could not load model: {e}")
             self.model = None
@@ -50,10 +53,16 @@ class PredictionService:
                 confidence, index = torch.max(probabilities, 0)
 
             predicted_class = self.CLASSES[index.item()]
+            
+            # Create probabilities dictionary for all classes
+            class_probabilities = {}
+            for i, class_name in enumerate(self.CLASSES):
+                class_probabilities[class_name] = round(probabilities[i].item() * 100, 2)
 
             return {
                 "prediction": predicted_class,
                 "confidence": round(confidence.item() * 100, 2),
+                "class_probabilities": class_probabilities,
                 "status": "success"
             }
 
@@ -63,4 +72,4 @@ class PredictionService:
 
     def generate_observation_id(self):
         """Generate a unique observation ID"""
-        return f"GCI-{uuid.uuid4().hex[:8].upper()}"
+        return f"GCSO-{uuid.uuid4().hex[:8].upper()}"

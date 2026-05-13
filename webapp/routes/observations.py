@@ -1,5 +1,6 @@
 from flask import request, jsonify, Response
 from galaxy_classification.database import GalaxyDatabase
+from config.model_config import MODEL_VERSION
 
 db = GalaxyDatabase()
 
@@ -37,7 +38,7 @@ def register_observation_routes(app):
         data = request.json or {}
         predicted_class = data.get('predicted_class')
         confidence = data.get('confidence')
-        model_version = data.get('model_version', 'best_0.8200.pth')
+        model_version = MODEL_VERSION
         is_manual = data.get('is_manual', False)
         manual_class = data.get('manual_class') if is_manual else None
 

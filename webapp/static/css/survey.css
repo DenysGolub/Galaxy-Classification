@@ -103,6 +103,8 @@
         .control-bar { height: 60px; background: var(--bg-panel); border-top: 1px solid var(--border-ui); display: flex; align-items: center; padding: 0 24px; gap: 15px; }
         .btn-tool { background: transparent; border: 1px solid var(--border-ui); color: #d1d5db; padding: 8px 14px; font-size: 10px; font-family: var(--font-mono); cursor: pointer; border-radius: 2px; }
         .btn-tool.active { background: var(--accent); color: #000; }
+        .btn-tool:disabled { opacity: 0.55; cursor: wait; }
+        .btn-tool.is-waiting { border-color: #facc15 !important; color: #facc15 !important; }
 
         /* NUKE ALADIN UI 
            v3 uses several specific container classes. This kills them all.
@@ -174,6 +176,46 @@
 }
 
 .prediction-value { color: var(--accent); font-weight: bold; }
+
+.metadata-found-panel {
+    margin: 12px 0;
+    padding: 10px;
+    border: 1px solid rgba(74, 222, 128, 0.55);
+    background: rgba(74, 222, 128, 0.05);
+}
+
+.metadata-found-title {
+    color: #4ade80;
+    font-size: 9px;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+}
+
+.metadata-found-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9px;
+}
+
+.metadata-found-table td {
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.metadata-found-table td:first-child {
+    color: #6b7280;
+}
+
+.metadata-found-table td:last-child {
+    color: var(--accent);
+    text-align: right;
+}
+
+.metadata-empty {
+    border-color: var(--border-ui);
+    color: #6b7280;
+    background: rgba(255,255,255,0.02);
+}
 
 .modal-footer {
     padding: 8px 12px;

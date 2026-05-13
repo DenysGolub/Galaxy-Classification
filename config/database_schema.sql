@@ -7,7 +7,7 @@ PRAGMA foreign_keys = ON;
 -- Galaxy observations table
 CREATE TABLE IF NOT EXISTS observations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    observation_id TEXT UNIQUE NOT NULL, -- e.g., "GCI-J1951-0258"
+    observation_id TEXT UNIQUE NOT NULL, -- e.g., "GCS-J1951-0258"
     ra REAL NOT NULL, -- Right Ascension in degrees
     dec REAL NOT NULL, -- Declination in degrees
     survey_source TEXT NOT NULL, -- "DESI DR10", "SDSS9", etc.
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS observations (
 CREATE TABLE IF NOT EXISTS classifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     observation_id INTEGER NOT NULL,
-    model_version TEXT NOT NULL, -- e.g., "best_0.8200.pth"
+    model_version TEXT NOT NULL, -- e.g., current configured model filename
     predicted_class TEXT NOT NULL, -- "Disturbed / Merging", "Smooth", "Spiral", "Edge-on"
     confidence REAL NOT NULL, -- 0.0 to 1.0
     classified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

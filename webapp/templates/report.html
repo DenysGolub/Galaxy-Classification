@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>GCI // OBJECT_REPORT_${id}</title>
+    <title>GCS // OBJECT_REPORT</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -43,16 +43,15 @@
             margin-bottom: 40px;
             display: flex;
             justify-content: space-between;
-            align-items: flex-start; /* Prevent overlapping in header */
+            align-items: flex-start;
         }
 
         .obj-id { font-family: var(--font-mono); font-size: 24px; color: var(--accent); font-weight: 700; word-break: break-all; max-width: 70%; }
         .timestamp { font-family: var(--font-mono); font-size: 10px; color: var(--dim); margin-bottom: 5px; }
 
-        /* Fixed Grid Layout to prevent overlapping */
         .grid { 
             display: grid; 
-            grid-template-columns: 400px 1fr; /* Fixed width for visual to prevent squeezing */
+            grid-template-columns: 400px 1fr;
             gap: 40px; 
         }
 
@@ -84,7 +83,6 @@
             border-top: 1px solid var(--border);
         }
 
-        /* Prediction Badge Styles */
         .prediction-block {
             margin-top: 20px;
             padding: 20px;
@@ -133,6 +131,24 @@
         .m-label { font-size: 9px; color: var(--dim); margin-bottom: 4px; }
         .m-val { font-size: 12px; color: var(--accent); font-weight: bold; }
 
+        .metadata-json {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+        }
+
+        .metadata-chip {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            padding: 10px;
+            min-height: 52px;
+        }
+
+        .metadata-chip span {
+            display: block;
+            font-family: var(--font-mono);
+        }
+
         .btn-print {
             background: transparent;
             border: 1px solid var(--accent);
@@ -145,6 +161,58 @@
         }
 
         .btn-print:hover { background: var(--accent); color: #000; }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .btn-link {
+            display: inline-block;
+            border: 1px solid var(--border);
+            color: var(--dim);
+            padding: 8px 15px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            text-decoration: none;
+        }
+        .btn-link:hover { border-color: var(--accent); color: var(--accent); }
+
+        .filename-input {
+            background: #07070b;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 10px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            width: 180px;
+            min-width: 180px;
+            outline: none;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: var(--accent);
+            text-decoration: none;
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+
+        .back-link:hover { text-decoration: underline; }
+
+        .empty-state {
+            text-align: center;
+            padding: 100px 20px;
+            color: var(--dim);
+        }
+
+        .empty-state h3 {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -152,65 +220,93 @@
 <div class="dossier-container">
     <div class="report-header">
         <div>
-            <div class="timestamp">GCI_RECON_REPORT // SYS_4.0</div>
-            <div class="obj-id" id="obj-title">LOADING_OBJECT...</div>
+            <div class="timestamp">GCS_RECON_REPORT // SYS_4.0</div>
+            <div class="obj-id" id="obj-title">{% if observation %}OBJECT: {{ observation.observation_id or observation.id }}{% else %}LOADING_OBJECT...{% endif %}</div>
         </div>
-        <button class="btn-print" onclick="window.print()">[ EXPORT_RECORD ]</button>
+        <div class="header-actions">
+            <a class="btn-link" href="/">[ MAIN_MENU ]</a>
+            <a class="btn-link" href="/dossier">[ DOSSIERS ]</a>
+            <a class="btn-link" href="/survey">[ SURVEY ]</a>
+        </div>
     </div>
 
     <div class="grid">
         <div class="visual-col">
             <div class="section-title">Visual Capture</div>
             <div class="visual-capture">
-                <img id="main-image" src="" class="main-img" alt="Galaxy Image">
+                {% if observation and observation.image_data %}
+                <img id="main-image" src="data:image/jpeg;base64,{{ observation.image_data }}" class="main-img" alt="Galaxy Image" style="display: block;">
+                {% else %}
+                <img id="main-image" src="" class="main-img" alt="Galaxy Image" style="display: none;">
+                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--dim);">
+                    <span id="loading-image">{% if observation %}NO IMAGE DATA{% else %}Loading image...{% endif %}</span>
+                </div>
+                {% endif %}
                 <div class="overlay-stats">
-                    <span id="survey-label">SURVEY: --</span>
-                    <span id="coord-overlay">--</span>
+                    <span id="survey-label">{% if observation %}SOURCE: {{ observation.survey_source or 'UNKNOWN' }}{% else %}SURVEY: --{% endif %}</span>
+                    <span id="coord-overlay">{% if observation %}RA: {{ observation.ra|round(4) if observation.ra else '--' }} DEC: {{ observation.dec|round(4) if observation.dec else '--' }}{% else %}--{% endif %}</span>
                 </div>
             </div>
 
             <div class="prediction-block">
                 <div class="prediction-label">AI Morphology Classification</div>
-                <div class="prediction-value" id="ai-prediction">ANALYZING...</div>
+                <div class="prediction-value" id="ai-prediction">{% if observation %}{{ observation.predicted_class|upper if observation.predicted_class else 'UNKNOWN' }}{% else %}ANALYZING...{% endif %}</div>
                 <div style="margin-top: 5px; font-family: var(--font-mono); font-size: 10px; color: var(--success); opacity: 0.8;">
-                    CONFIDENCE: <span id="ai-confidence">--</span>%
+                    CONFIDENCE: <span id="ai-confidence">{% if observation %}{{ (observation.confidence * 100)|round(1) if observation.confidence else '0.0' }}{% else %}--{% endif %}</span>%
                 </div>
             </div>
             
             <div style="margin-top: 20px; font-size: 11px; color: var(--dim); font-family: var(--font-mono); line-height: 1.4;">
-                CRITICAL: This dossier is an automated synthesis of SDSS/Vizier metadata and local CNN morphological inference.
+                CRITICAL: This dossier is an automated synthesis of database metadata and local CNN morphological inference.
             </div>
+
+            <a href="/dossier" class="back-link">← RETURN_TO_DOSSIER</a>
         </div>
 
         <div class="data-col">
             <div class="data-section">
-                <div class="section-title">Spectroscopic Signature</div>
+                <div class="section-title">Astronomical Data</div>
                 <table class="stats-table">
-                    <tr><td class="label">Redshift (z)</td><td class="value high-value" id="z-val">--</td></tr>
-                    <tr><td class="label">Spectral Class</td><td class="value" id="spec-class">--</td></tr>
-                    <tr><td class="label">Subclass</td><td class="value" id="sub-class">--</td></tr>
-                    <tr><td class="label">Vel. Dispersion</td><td class="value" id="vel-disp">--</td></tr>
+                    <tr><td class="label">Redshift (z)</td><td class="value high-value" id="z-val">{% if observation %}{{ observation.redshift|round(5) if observation.redshift else '--' }}{% else %}--{% endif %}</td></tr>
+                    <tr><td class="label">Object Type</td><td class="value" id="object-type">{% if observation %}{{ observation.object_type or '--' }}{% else %}--{% endif %}</td></tr>
+                    <tr><td class="label">Survey Source</td><td class="value" id="survey-source">{% if observation %}{{ observation.metadata_catalog_source or observation.survey_source or '--' }}{% else %}--{% endif %}</td></tr>
+                    <tr><td class="label">Observation ID</td><td class="value" id="obs-id" style="font-size: 11px; color: var(--dim);">{% if observation %}{{ observation.observation_id or '--' }}{% else %}--{% endif %}</td></tr>
                 </table>
             </div>
 
             <div class="data-section">
-                <div class="section-title">Photometry (AB Magnitudes)</div>
+                <div class="section-title">Photometry</div>
                 <div class="mag-grid">
-                    <div class="mag-box"><span class="m-label">U</span><span class="m-val" id="u-mag">--</span></div>
-                    <div class="mag-box"><span class="m-label">G</span><span class="m-val" id="g-mag">--</span></div>
-                    <div class="mag-box"><span class="m-label">R</span><span class="m-val" id="r-mag">--</span></div>
-                    <div class="mag-box"><span class="m-label">I</span><span class="m-val" id="i-mag">--</span></div>
-                    <div class="mag-box"><span class="m-label">Z</span><span class="m-val" id="z-mag">--</span></div>
+                    <div class="mag-box"><span class="m-label">MAG_U</span><span class="m-val" id="mag-u">{% if observation %}{{ observation.u_magnitude|round(3) if observation.u_magnitude else '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="mag-box"><span class="m-label">MAG_G</span><span class="m-val" id="mag-g">{% if observation %}{{ observation.g_magnitude|round(3) if observation.g_magnitude else '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="mag-box"><span class="m-label">MAG_R</span><span class="m-val" id="mag-r">{% if observation %}{{ observation.r_magnitude|round(3) if observation.r_magnitude else '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="mag-box"><span class="m-label">MAG_I</span><span class="m-val" id="mag-i">{% if observation %}{{ observation.i_magnitude|round(3) if observation.i_magnitude else '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="mag-box"><span class="m-label">MAG_Z</span><span class="m-val" id="mag-z">{% if observation %}{{ observation.z_magnitude|round(3) if observation.z_magnitude else '--' }}{% else %}--{% endif %}</span></div>
                 </div>
             </div>
 
             <div class="data-section">
-                <div class="section-title">Catalog Information</div>
+                <div class="section-title">Catalog Metadata</div>
+                <div class="metadata-json">
+                    <div class="metadata-chip"><span class="m-label">PHOTO_OBJID</span><span class="m-val" id="phot-objid">{% if observation and observation.metadata_json %}{{ observation.metadata_json.phot_objid or '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="metadata-chip"><span class="m-label">SPEC_OBJID</span><span class="m-val" id="spec-objid">{% if observation and observation.metadata_json %}{{ observation.metadata_json.specobjid or '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="metadata-chip"><span class="m-label">SUBCLASS</span><span class="m-val" id="subclass">{% if observation and observation.metadata_json %}{{ observation.metadata_json.subClass or '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="metadata-chip"><span class="m-label">VEL_DISP</span><span class="m-val" id="vel-disp">{% if observation and observation.metadata_json %}{{ observation.metadata_json.velDisp|round(2) if observation.metadata_json.velDisp else '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="metadata-chip"><span class="m-label">PETRO_R50</span><span class="m-val" id="petro-r50">{% if observation and observation.metadata_json %}{{ observation.metadata_json.petroR50_r|round(3) if observation.metadata_json.petroR50_r else '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="metadata-chip"><span class="m-label">PETRO_R90</span><span class="m-val" id="petro-r90">{% if observation and observation.metadata_json %}{{ observation.metadata_json.petroR90_r|round(3) if observation.metadata_json.petroR90_r else '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="metadata-chip"><span class="m-label">PLATE</span><span class="m-val" id="plate">{% if observation and observation.metadata_json %}{{ observation.metadata_json.plate or '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="metadata-chip"><span class="m-label">MJD</span><span class="m-val" id="mjd">{% if observation and observation.metadata_json %}{{ observation.metadata_json.mjd or '--' }}{% else %}--{% endif %}</span></div>
+                    <div class="metadata-chip"><span class="m-label">FIBER_ID</span><span class="m-val" id="fiber-id">{% if observation and observation.metadata_json %}{{ observation.metadata_json.fiberID or '--' }}{% else %}--{% endif %}</span></div>
+                </div>
+            </div>
+
+            <div class="data-section">
+                <div class="section-title">System Information</div>
                 <table class="stats-table">
-                    <tr><td class="label">SDSS ObjID</td><td class="value" id="sdss-id">--</td></tr>
-                    <tr><td class="label">Petro R50 (r)</td><td class="value" id="r50">--</td></tr>
-                    <tr><td class="label">Petro R90 (r)</td><td class="value" id="r90">--</td></tr>
-                    <tr><td class="label">Obs ID</td><td class="value" id="internal-id" style="font-size: 10px; color: var(--dim);">--</td></tr>
+                    <tr><td class="label">Model Version</td><td class="value" id="model-version" style="font-size: 11px;">{% if observation %}{{ observation.model_version or '--' }}{% else %}--{% endif %}</td></tr>
+                    <tr><td class="label">Manual Override</td><td class="value" id="manual-override">{% if observation %}{{ 'Yes' if observation.is_manual_override else 'No' }}{% else %}No{% endif %}</td></tr>
+                    <tr><td class="label">Captured At</td><td class="value" id="captured-at" style="font-size: 11px;">{% if observation %}{{ observation.captured_at or '--' }}{% else %}--{% endif %}</td></tr>
+                    <tr><td class="label">Internal ID</td><td class="value" id="internal-id" style="font-size: 10px; color: var(--dim);">{% if observation %}#{{ observation.id }}{% else %}--{% endif %}</td></tr>
                 </table>
             </div>
         </div>
@@ -218,38 +314,132 @@
 </div>
 
 <script>
+{% if not observation %}
     async function loadReport() {
         const urlParams = new URLSearchParams(window.location.search);
         const objectId = urlParams.get('id');
-        if (!objectId) return;
+        if (!objectId) {
+            showError('No observation ID provided');
+            return;
+        }
 
         try {
-            const response = await fetch(`/api/observation/${objectId}`);
+            const response = await fetch(`/api/observation/${encodeURIComponent(objectId)}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
 
+            if (!data || data.error) {
+                showError('Observation not found');
+                return;
+            }
+
             // Header & Image
-            document.getElementById('obj-title').innerText = `OBJECT: ${data.phot_objid || data.id}`;
-            document.getElementById('main-image').src = data.image_data;
-            document.getElementById('coord-overlay').innerText = `RA: ${data.ra.toFixed(4)} DEC: ${data.dec.toFixed(4)}`;
-            document.getElementById('survey-label').innerText = `SOURCE: ${data.survey_source || 'DESI'}`;
+            document.getElementById('obj-title').innerText = `OBJECT: ${data.observation_id || data.id}`;
+
+            // Handle image
+            if (data.image_data) {
+                const img = document.getElementById('main-image');
+                img.src = `data:image/jpeg;base64,${data.image_data}`;
+                img.style.display = 'block';
+                document.getElementById('loading-image').style.display = 'none';
+            } else {
+                document.getElementById('loading-image').innerText = 'NO IMAGE DATA';
+            }
+
+            document.getElementById('coord-overlay').innerText = `RA: ${data.ra?.toFixed(4) || '--'} DEC: ${data.dec?.toFixed(4) || '--'}`;
+            document.getElementById('survey-label').innerText = `SOURCE: ${data.survey_source || 'UNKNOWN'}`;
 
             // AI Model Prediction
-            document.getElementById('ai-prediction').innerText = data.classification ? data.classification.toUpperCase() : 'UNKNOWN';
+            document.getElementById('ai-prediction').innerText = data.predicted_class ? data.predicted_class.toUpperCase() : 'UNKNOWN';
             document.getElementById('ai-confidence').innerText = data.confidence ? (data.confidence * 100).toFixed(1) : '0.0';
 
-            // Spectroscopy
-            document.getElementById('z-val').innerText = data.z ? data.z.toFixed(5) : 'MISSING';
-            document.getElementById('spec-class').innerText = data.class || '--';
-            document.getElementById('sub-class').innerText = data.subClass || 'NONE';
-            document.getElementById('vel-disp').innerText = data.velDisp ? `${data.velDisp.toFixed(1)} km/s` : '--';
+            // Astronomical Data
+            document.getElementById('z-val').innerText = formatNumber(data.redshift, 5);
+            document.getElementById('object-type').innerText = data.object_type || '--';
+            document.getElementById('survey-source').innerText = data.metadata_catalog_source || data.survey_source || '--';
+            document.getElementById('obs-id').innerText = data.observation_id || '--';
             
             // Photometry
-            document.getElementById('u-mag').innerText = data.u_mag?.toFixed(2) || '--';
-            document.getElementById('g-mag').innerText = data.g_mag?.toFixed(2) || '--';
-            document.getElementById('r-mag').innerText = data.r_mag?.toFixed(2) || '--';
-            document.getElementById('i-mag').innerText = data.i_mag?.toFixed(2) || '--';
-            document.getElementById('z-mag').innerText = data.z_mag?.toFixed(2) || '--';
+            document.getElementById('mag-u').innerText = formatNumber(data.u_magnitude, 3);
+            document.getElementById('mag-g').innerText = formatNumber(data.g_magnitude, 3);
+            document.getElementById('mag-r').innerText = formatNumber(data.r_magnitude, 3);
+            document.getElementById('mag-i').innerText = formatNumber(data.i_magnitude, 3);
+            document.getElementById('mag-z').innerText = formatNumber(data.z_magnitude, 3);
 
-            // Structure
-            document.getElementById('sdss-id').innerText = data.phot_objid || 'N/A';
-            document.getElementById('r50').innerText = data.petroR50_r ? `${data.petroR50_r
+            // Catalog metadata stored as JSON
+            const metadata = data.metadata_json || {};
+            document.getElementById('phot-objid').innerText = formatValue(metadata.phot_objid);
+            document.getElementById('spec-objid').innerText = formatValue(metadata.specobjid);
+            document.getElementById('subclass').innerText = formatValue(metadata.subClass);
+            document.getElementById('vel-disp').innerText = formatNumber(metadata.velDisp, 2);
+            document.getElementById('petro-r50').innerText = formatNumber(metadata.petroR50_r, 3);
+            document.getElementById('petro-r90').innerText = formatNumber(metadata.petroR90_r, 3);
+            document.getElementById('plate').innerText = formatValue(metadata.plate);
+            document.getElementById('mjd').innerText = formatValue(metadata.mjd);
+            document.getElementById('fiber-id').innerText = formatValue(metadata.fiberID);
+
+            // System Information
+            document.getElementById('model-version').innerText = data.model_version || '--';
+            document.getElementById('manual-override').innerText = data.is_manual_override ? 'Yes' : 'No';
+            document.getElementById('captured-at').innerText = formatDate(data.captured_at);
+            document.getElementById('internal-id').innerText = `#${data.id}`;
+        } catch (error) {
+            console.error('Failed to load observation:', error);
+            showError('Unable to load observation data. Check console for details.');
+        }
+    }
+
+    function downloadReport() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const objectId = urlParams.get('id');
+        if (!objectId) {
+            showError('Report download requires an observation id.');
+            return;
+        }
+        const filenameInput = document.getElementById('report-filename');
+        const fileName = (filenameInput?.value || `gcs-report-${objectId}.pdf`).trim() || `gcs-report-${objectId}.pdf`;
+        window.location.href = `/report/download?id=${encodeURIComponent(objectId)}&filename=${encodeURIComponent(fileName)}`;
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '--';
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleString();
+        } catch {
+            return dateStr;
+        }
+    }
+
+    function formatNumber(value, digits) {
+        if (value === undefined || value === null || value === '') return '--';
+        const number = Number(value);
+        return Number.isFinite(number) ? number.toFixed(digits) : '--';
+    }
+
+    function formatValue(value) {
+        if (value === undefined || value === null || value === '') return '--';
+        return String(value);
+    }
+
+    function showError(message) {
+        document.querySelector('.dossier-container').innerHTML = `
+            <div class="empty-state">
+                <h3>SYSTEM_ERROR</h3>
+                <p>${message}</p>
+                <a href="/dossier" style="color: var(--accent); text-decoration: none; font-family: var(--font-mono); font-size: 12px;">
+                    ← RETURN_TO_DOSSIER
+                </a>
+            </div>
+        `;
+    }
+
+    // Load report when page loads
+    document.addEventListener('DOMContentLoaded', loadReport);
+{% endif %}
+</script>
+
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCI Console | Discovery Dossiers</title>
+    <title>GCS Console | Discovery Dossiers</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400&family=Inter:wght@300;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -42,6 +42,24 @@
         }
 
         .brand { font-family: var(--font-mono); font-size: 14px; color: var(--accent); letter-spacing: 2px; }
+        .top-nav {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            font-family: var(--font-mono);
+            font-size: 10px;
+        }
+        .top-nav a {
+            color: var(--text-dim);
+            text-decoration: none;
+            border: 1px solid var(--border-ui);
+            padding: 5px 8px;
+        }
+        .top-nav a:hover,
+        .top-nav a.active {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
 
         /* Actions Bar */
         .actions-bar {
@@ -75,7 +93,15 @@
             transition: background 0.2s;
         }
 
-        .dossier-table tr:hover { background: rgba(0, 212, 255, 0.03); }
+        .dossier-table tbody tr {
+            cursor: pointer;
+        }
+
+        .dossier-table tbody tr:hover {
+            background: rgba(0, 212, 255, 0.08);
+            border-left: 3px solid var(--accent);
+            padding-left: 12px;
+        }
         .dossier-table td { padding: 12px 15px; vertical-align: middle; }
 
         /* Responsive design */
@@ -208,12 +234,47 @@
         }
 
         .fade-out { opacity: 0; transform: translateX(30px); transition: 0.4s; }
+
+
+        /* Custom Scrollbar Styling */
+    /* Works on Chrome, Edge, Safari, and Opera */
+    main::-webkit-scrollbar {
+        width: 8px; /* Slimmer for a technical look */
+    }
+
+    main::-webkit-scrollbar-track {
+        background: var(--bg-base); 
+        border-left: 1px solid var(--border-ui);
+    }
+
+    main::-webkit-scrollbar-thumb {
+        background: var(--border-ui);
+        border-radius: 4px;
+        transition: background 0.3s;
+    }
+
+    main::-webkit-scrollbar-thumb:hover {
+        background: var(--accent); /* Glows cyan on hover */
+        box-shadow: 0 0 10px var(--accent);
+    }
+
+    /* Firefox Support */
+    main {
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-ui) var(--bg-base);
+    }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="brand">GCI // DISCOVERY_DOSSIER_ARCHIVE</div>
+    <div class="brand">GCS // DISCOVERY_DOSSIER_ARCHIVE</div>
+    <nav class="top-nav">
+        <a href="/">MAIN_MENU</a>
+        <a href="/survey">OBSERVATION_DECK</a>
+        <a href="/assistant">NEURAL_ASSISTANT</a>
+        <a href="/dossier" class="active">DOSSIERS</a>
+    </nav>
     <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
         ACTIVE_RECORDS: <span id="record-count" style="color: var(--accent);">0</span>
     </div>
@@ -301,9 +362,16 @@ async function loadObservations() {
                 <td><span class="badge galaxy">${obs.classification.replace(' ', '_').toUpperCase()}</span></td>
                 <td style="color: var(--success);">${obs.confidence}</td>
                 <td style="text-align: right;">
-                    <button class="btn-purge" onclick="requestPurge('row-${obs.id}', this)">[ PURGE ]</button>
+                    <button class="btn-purge" onclick="requestPurge(event, 'row-${obs.id}', this)">[ PURGE ]</button>
                 </td>
             `;
+
+            // Add click handler to open report (but not when clicking purge button)
+            row.addEventListener('click', (e) => {
+                if (!e.target.closest('.btn-purge')) {
+                    openReport(obs.id);
+                }
+            });
 
             tbody.appendChild(row);
         });
@@ -323,7 +391,8 @@ async function loadObservations() {
     }
 }
 
-async function requestPurge(rowId, btn) {
+async function requestPurge(event, rowId, btn) {
+    event.stopPropagation(); // Prevent row click event
     const observationId = rowId.replace('row-', '');
     if (!confirm('PURGE THIS RECORD FROM DATABASE?')) {
         return;
@@ -348,6 +417,10 @@ async function requestPurge(rowId, btn) {
     } catch (error) {
         console.error('Purge failed:', error);
     }
+}
+
+function openReport(observationId) {
+    window.location.href = `/report?id=${encodeURIComponent(observationId)}`;
 }
 
 async function purgeAll() {

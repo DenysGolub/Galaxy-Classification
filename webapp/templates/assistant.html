@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCI Console | Astrophysical Analysis Core</title>
+    <title>GCS Console | Astrophysical Analysis Core</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -55,6 +55,17 @@
         }
         .stat-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px; }
         .stat-value { font-family: var(--font-mono); font-size: 12px; color: var(--text-main); }
+        .nav-link {
+            padding: 15px 24px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            transition: 0.2s;
+        }
+        .nav-link:hover { color: var(--text-main); background: rgba(255,255,255,0.03); }
+        .nav-link.active { color: var(--accent); background: rgba(0, 212, 255, 0.08); }
 
         /* Main Viewport */
         main { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -70,7 +81,7 @@
         .chat-layout { flex-grow: 1; display: grid; grid-template-columns: 1fr 320px; overflow: hidden; }
 
         /* Assistant Interface */
-        .analysis-core { display: flex; flex-direction: column; border-right: 1px solid var(--border-ui); background: #0c0c0f; }
+        .analysis-core { display: flex; flex-direction: column; border-right: 1px solid var(--border-ui); background: #0c0c0f; overflow: hidden; }
 
         #chat-history { 
             flex-grow: 1; overflow-y: auto; padding: 32px; 
@@ -112,8 +123,39 @@
         }
         .btn-execute:hover { background: var(--accent); color: #000; border-color: var(--accent); }
 
-        /* Right Panel: Telemetry */
-        .telemetry-panel { padding: 20px; background: var(--bg-base); font-family: var(--font-mono); font-size: 10px; overflow-y: auto; }
+        /* Mode Toggle */
+        .mode-selector {
+            display: flex; gap: 0; margin-bottom: 12px; border-radius: 4px; overflow: hidden;
+            border: 1px solid var(--border-ui);
+        }
+        .mode-btn {
+            flex: 1; padding: 8px 12px; font-size: 10px; font-family: var(--font-mono);
+            background: #1e1e22; color: var(--text-dim); border: none; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 1px; transition: 0.2s;
+            border-right: 1px solid var(--border-ui);
+        }
+        .mode-btn:last-child { border-right: none; }
+        .mode-btn:hover { background: #282830; color: var(--text-main); }
+        .mode-btn.active { 
+            background: var(--accent); color: #000; font-weight: 600;
+        }
+
+        /* Right Panel: Session List */
+        .session-panel { padding: 20px; background: var(--bg-base); font-family: var(--font-mono); font-size: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .panel-header h2 { font-size: 12px; letter-spacing: 1px; color: var(--accent); margin: 0; text-transform: uppercase; }
+        .panel-header button { background: transparent; border: 1px solid var(--border-ui); color: var(--text-dim); padding: 6px 10px; border-radius: 4px; cursor: pointer; font-family: var(--font-mono); font-size: 10px; }
+        .panel-header button:hover { border-color: var(--accent); color: var(--text-main); }
+        .session-summary { color: var(--text-dim); font-size: 10px; }
+        .session-list { display: flex; flex-direction: column; gap: 8px; }
+        .session-item { display: flex; flex-direction: column; gap: 4px; padding: 12px; background: #101014; border: 1px solid var(--border-ui); border-radius: 6px; text-align: left; cursor: pointer; }
+        .session-item:hover { border-color: var(--accent); }
+        .session-item.active { border-color: var(--accent); background: rgba(0, 212, 255, 0.08); }
+        .session-item span { display: block; color: var(--text-main); font-size: 12px; }
+        .session-item small { color: var(--text-dim); font-size: 10px; }
+        .session-log { display: flex; flex-direction: column; gap: 8px; }
+        .session-log-title { color: var(--accent); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .session-log-list { max-height: 180px; overflow-y: auto; border: 1px solid var(--border-ui); border-radius: 6px; padding: 10px; background: #09090d; }
         .tel-row { display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--text-dim); }
         .tel-val { color: var(--data-blue); }
 
@@ -125,75 +167,189 @@
 <body>
 
 <aside>
-    <div class="console-label">GCI_RESEARCH_CORE</div>
-    <div class="data-stat">
-        <div class="stat-label">System State</div>
-        <div class="stat-value">Nominal // Llama-3_Active</div>
-    </div>
-    <div class="data-stat">
-        <div class="stat-label">Model Architecture</div>
-        <div class="stat-value">Meta-Llama-3-8B-Instruct</div>
-    </div>
-    <div class="data-stat">
-        <div class="stat-label">Session ID</div>
-        <div class="stat-value">DIPLOMA_REF_772</div>
-    </div>
+    <div class="console-label">GCS_NEURAL_ASSISTANT</div>
+    <a href="/" class="nav-link">00 // MAIN_MENU</a>
+    <a href="/survey" class="nav-link">01 // OBSERVATION_DECK</a>
+    <a href="/assistant" class="nav-link active">02 // NEURAL_ASSISTANT</a>
+    <a href="/dossier" class="nav-link">03 // DISCOVERY_DOSSIERS</a>
 </aside>
 
 <main>
     <header>
-        <div>COORD: 0h 42.7m, +41° 16′ | FIELD: Andromeda_M31</div>
+        <div></div>
         <div style="color: var(--text-dim);">UTC: <span id="clock">--:--:--</span></div>
     </header>
-
     <div class="chat-layout">
         <section class="analysis-core">
             <div id="chat-history">
                 <div class="entry">
-                    <div class="entry-meta"><span>SYSTEM_INITIALIZATION</span><span>AUTH: COMMANDER</span></div>
-                    <div class="content ai">Welcome to the GCI Analysis Core. Neural weights for Llama-3 are loaded. I am prepared to assist with your thesis on galactic morphological classification, redshift analysis, or stellar population synthesis. State your objective.</div>
+                    <div class="entry-meta"><span>OLAMA</span><span></span></div>
+                    <div class="content ai">Welcome to the GCS Neural Assistant.<br><br><strong>DATABASE Mode:</strong> Query local observations, records, classifications, stats, and reports. Use: "show recent", "database stats", "GCSO-[id]".<br><br><strong>EXPERT Mode:</strong> Ask astrophysics questions about galaxies, classifications, and astronomical concepts.<br><br>Select a mode above to get started.</div>
                 </div>
             </div>
 
             <div class="input-module">
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="database" onclick="setMode('database')">🔍 DATABASE</button>
+                    <button class="mode-btn" data-mode="expert" onclick="setMode('expert')">🧠 EXPERT</button>
+                </div>
                 <div class="input-container">
                     <input type="text" id="user-input" placeholder="Execute analysis query..." autocomplete="off">
-                    <button class="btn-execute" onclick="sendMessage()">RUN_QUERY</button>
+                    <button class="btn-execute" onclick="if (!isResponding) sendMessage()">RUN_QUERY</button>
                 </div>
             </div>
         </section>
 
-        <section class="telemetry-panel" id="logs">
-            <div style="color: var(--accent); margin-bottom: 15px; font-size: 11px;">> LIVE_TELEMETRY_FEED</div>
-            </section>
+        <section class="session-panel">
+            <div class="panel-header">
+                <h2>CHAT SESSIONS</h2>
+                <button type="button" onclick="createNewSession()">NEW SESSION</button>
+            </div>
+            <div class="session-summary">Select a previous session to load its history, or create a new one.</div>
+            <div id="session-list" class="session-list"></div>
+        </section>
     </div>
 </main>
 
 <script>
     const chatHistory = document.getElementById('chat-history');
     const userInput = document.getElementById('user-input');
-    const logs = document.getElementById('logs');
+    const sessionList = document.getElementById('session-list');
+    let currentMode = 'database';
+    let currentSessionId = localStorage.getItem('chat_session_id') || 'default';
 
     function updateClock() {
         document.getElementById('clock').innerText = new Date().toISOString().slice(11, 19);
     }
     setInterval(updateClock, 1000);
 
-    function addLog(text) {
-        const row = document.createElement('div');
-        row.className = 'tel-row';
-        row.innerHTML = `<span>${new Date().toLocaleTimeString()}</span><span class="tel-val">${text}</span>`;
-        logs.appendChild(row);
-        logs.scrollTop = logs.scrollHeight;
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+        
+        const placeholder = mode === 'database' 
+            ? "Query observations, stats, or enter GCSO-ID..." 
+            : "Ask about galaxies and astronomy...";
+        userInput.placeholder = placeholder;
+        userInput.focus();
     }
+
+    function appendMessage(role, text, timestamp = null) {
+        const entry = document.createElement('div');
+        entry.className = 'entry';
+        const label = role === 'user' ? 'USER_INPUT' : 'NEURAL_LINK';
+        const timestampStr = timestamp ? `<span>${new Date(timestamp).toLocaleString()}</span>` : '';
+        const formattedText = text.replace(/\n/g, '<br>');
+        entry.innerHTML = `
+            <div class="entry-meta"><span>${label}</span>${timestampStr}</div>
+            <div class="content ${role}">${formattedText}</div>
+        `;
+        chatHistory.appendChild(entry);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function ensureSessionItem(sessionId, title = null) {
+        let existing = Array.from(sessionList.children).find(item => item.dataset.sessionId === sessionId);
+        if (existing) {
+            return existing;
+        }
+
+        const newItem = document.createElement('button');
+        newItem.type = 'button';
+        newItem.className = 'session-item';
+        newItem.dataset.sessionId = sessionId;
+        newItem.innerHTML = `<span>${title || sessionId}</span><small>Current session</small>`;
+        newItem.onclick = () => setActiveSession(sessionId, title);
+        sessionList.prepend(newItem);
+        return newItem;
+    }
+
+    function setActiveSession(sessionId, title = null) {
+        currentSessionId = sessionId;
+        localStorage.setItem('chat_session_id', sessionId);
+        ensureSessionItem(sessionId, title);
+        document.querySelectorAll('.session-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.sessionId === sessionId);
+        });
+        loadSessionHistory(sessionId);
+    }
+
+    function createNewSession() {
+        const newSessionId = `session-${Date.now()}`;
+        setActiveSession(newSessionId, `New Session`);
+    }
+
+    async function loadSessions() {
+        try {
+            const response = await fetch('/api/chat/sessions');
+            const sessions = await response.json();
+            sessionList.innerHTML = '';
+            const activeSet = new Set();
+
+            sessions.forEach(session => {
+                activeSet.add(session.session_id);
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'session-item';
+                item.dataset.sessionId = session.session_id;
+                item.innerHTML = `<span>${session.title}</span><small>${new Date(session.started_at).toLocaleString()}</small>`;
+                item.onclick = () => setActiveSession(session.session_id, session.title);
+                sessionList.appendChild(item);
+            });
+
+            if (!activeSet.has(currentSessionId)) {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'session-item active';
+                item.dataset.sessionId = currentSessionId;
+                item.innerHTML = `<span>${currentSessionId}</span><small>Current session</small>`;
+                item.onclick = () => setActiveSession(currentSessionId);
+                sessionList.prepend(item);
+            }
+
+            setActiveSession(currentSessionId);
+        } catch (error) {
+            console.error('Session load error:', error);
+        }
+    }
+
+    async function loadSessionHistory(sessionId) {
+        try {
+            const response = await fetch(`/api/chat/history/${encodeURIComponent(sessionId)}`);
+            const messages = await response.json();
+            chatHistory.innerHTML = '';
+
+            if (!messages || messages.length === 0) {
+                chatHistory.innerHTML = `
+                    <div class="entry">
+                        <div class="entry-meta"><span>SESSION_EMPTY</span></div>
+                        <div class="content ai">This session has no messages yet. Send a message to begin.</div>
+                    </div>`;
+                return;
+            }
+
+            messages.forEach(message => {
+                const role = message.role === 'user' ? 'user' : 'assistant';
+                appendMessage(role, message.content, message.timestamp);
+            });
+        } catch (error) {
+            console.error('History load error:', error);
+        }
+    }
+
+    let isResponding = false;
 
     async function sendMessage() {
         const text = userInput.value.trim();
-        if (!text) return;
+        if (!text || isResponding) return;
+
+        isResponding = true;
+        userInput.disabled = true;
+        document.querySelector('.btn-execute').disabled = true;
 
         appendMessage('user', text);
         userInput.value = '';
-        addLog("QUERY_SENT");
 
         const entryDiv = document.createElement('div');
         entryDiv.className = 'entry';
@@ -208,8 +364,15 @@
             const response = await fetch('/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text })
+                body: JSON.stringify({ 
+                    message: text,
+                    mode: currentMode,
+                    session_id: currentSessionId
+                })
             });
+
+            const responseMode = response.headers.get('X-Response-Mode');
+            const dbQueryUsed = response.headers.get('X-DB-Query') === 'true';
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -220,26 +383,19 @@
                 aiContentDiv.innerText += decoder.decode(value, { stream: true });
                 chatHistory.scrollTop = chatHistory.scrollHeight;
             }
-            addLog("INFERENCE_SUCCESS");
         } catch (e) {
             aiContentDiv.innerText = "!! CRITICAL_ERROR: Link to Llama-3 core dropped.";
-            addLog("ERR_CONN_LOST");
+        } finally {
+            isResponding = false;
+            userInput.disabled = false;
+            document.querySelector('.btn-execute').disabled = false;
+            userInput.focus();
         }
     }
 
-    function appendMessage(role, text) {
-        const entry = document.createElement('div');
-        entry.className = 'entry';
-        const label = role === 'user' ? 'COMMANDER_INPUT' : 'NEURAL_LINK';
-        entry.innerHTML = `
-            <div class="entry-meta"><span>${label}</span></div>
-            <div class="content ${role}">${text}</div>
-        `;
-        chatHistory.appendChild(entry);
-        chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
+    userInput.addEventListener("keypress", (e) => { if (e.key === "Enter" && !isResponding) sendMessage(); });
 
-    userInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+    loadSessions();
 </script>
 </body>
 </html>

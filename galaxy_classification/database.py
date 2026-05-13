@@ -34,7 +34,7 @@ class GalaxyDatabase:
         finally:
             conn.close()
 
-    # Observation management
+    # Observation management 
     def save_observation(self, observation_id: str, ra: float, dec: float,
                         survey_source: str, image_data: str = None,
                         fov: float = None) -> int:
@@ -132,15 +132,15 @@ class GalaxyDatabase:
             """, (
                 observation_id,
                 catalog_source,
-                metadata.get('type'),
+                metadata.get('class') or metadata.get('type') or metadata.get('phot_type'),
                 metadata.get('flux_g'),
                 metadata.get('flux_r'),
-                metadata.get('redshift'),
-                metadata.get('u'),
-                metadata.get('g'),
-                metadata.get('r'),
-                metadata.get('i'),
-                metadata.get('z'),
+                metadata.get('redshift') if metadata.get('redshift') is not None else metadata.get('z'),
+                metadata.get('u') if metadata.get('u') is not None else metadata.get('u_mag'),
+                metadata.get('g') if metadata.get('g') is not None else metadata.get('g_mag'),
+                metadata.get('r') if metadata.get('r') is not None else metadata.get('r_mag'),
+                metadata.get('i') if metadata.get('i') is not None else metadata.get('i_mag'),
+                metadata.get('z_mag'),
                 json.dumps(metadata)
             ))
             conn.commit()
@@ -202,6 +202,29 @@ class GalaxyDatabase:
         finally:
             conn.close()
 
+    def get_chat_sessions(self, limit: int = 50) -> List[Dict]:
+        """List existing chat sessions."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT session_id, title, started_at
+                FROM chat_sessions
+                ORDER BY started_at DESC
+                LIMIT ?
+            """, (limit,))
+
+            sessions = []
+            for row in cursor.fetchall():
+                sessions.append({
+                    'session_id': row[0],
+                    'title': row[1] or 'Untitled Session',
+                    'started_at': row[2]
+                })
+            return sessions
+        finally:
+            conn.close()
+
     # Query methods
     def get_recent_observations(self, limit: int = 20) -> List[Dict]:
         """Get recent observations with classifications"""
@@ -236,6 +259,45 @@ class GalaxyDatabase:
         finally:
             conn.close()
 
+    def get_observation_count(self) -> int:
+        """Return the number of captured observations."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM observations")
+            return cursor.fetchone()[0]
+        finally:
+            conn.close()
+
+    def get_classified_observation_count(self) -> int:
+        """Return the number of observations with a classification."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(DISTINCT observation_id)
+                FROM classifications
+            """)
+            return cursor.fetchone()[0]
+        finally:
+            conn.close()
+
+    def get_latest_observation_id(self) -> Optional[str]:
+        """Return the latest captured observation id."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT observation_id
+                FROM observations
+                ORDER BY captured_at DESC, id DESC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            return row[0] if row else None
+        finally:
+            conn.close()
+
     def get_observation_by_id(self, observation_id: str) -> Optional[Dict]:
         """Get full observation details by ID"""
         conn = self.get_connection()
@@ -244,7 +306,10 @@ class GalaxyDatabase:
             cursor.execute("""
                 SELECT o.*, c.predicted_class, c.confidence, c.model_version,
                        c.is_manual_override, c.manual_class,
-                       am.object_type, am.flux_g, am.flux_r, am.redshift
+                       am.object_type, am.flux_g, am.flux_r, am.redshift,
+                       am.u_magnitude, am.g_magnitude, am.r_magnitude,
+                       am.i_magnitude, am.z_magnitude, am.catalog_source,
+                       am.metadata_json, am.retrieved_at
                 FROM observations o
                 LEFT JOIN classifications c ON o.id = c.observation_id
                 LEFT JOIN astronomical_metadata am ON o.id = am.observation_id
@@ -259,7 +324,61 @@ class GalaxyDatabase:
                     'ra': row[2],
                     'dec': row[3],
                     'survey_source': row[4],
-                    'image_data': row[7],  # blob data
+                    'image_path': row[5],
+                    'image_data': base64.b64encode(row[6]).decode('utf-8') if row[6] else None,  # blob data as base64
+                    'captured_at': row[7],
+                    'fov': row[8],
+                    'predicted_class': row[9],
+                    'confidence': row[10],
+                    'model_version': row[11],
+                    'is_manual_override': row[12],
+                    'manual_class': row[13],
+                    'object_type': row[14],
+                    'flux_g': row[15],
+                    'flux_r': row[16],
+                    'redshift': row[17],
+                    'u_magnitude': row[18],
+                    'g_magnitude': row[19],
+                    'r_magnitude': row[20],
+                    'i_magnitude': row[21],
+                    'z_magnitude': row[22],
+                    'metadata_catalog_source': row[23],
+                    'metadata_json': json.loads(row[24]) if row[24] else None,
+                    'metadata_retrieved_at': row[25]
+                }
+            return None
+        finally:
+            conn.close()
+
+    def find_by_id_or_name(self, identifier: str) -> Optional[Dict]:
+        """Find an observation by exact ID or partial identifier search."""
+        observation = self.get_observation_by_id(identifier)
+        if observation:
+            return observation
+
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT o.*, c.predicted_class, c.confidence, c.model_version,
+                       c.is_manual_override, c.manual_class,
+                       am.object_type, am.flux_g, am.flux_r, am.redshift
+                FROM observations o
+                LEFT JOIN classifications c ON o.id = c.observation_id
+                LEFT JOIN astronomical_metadata am ON o.id = am.observation_id
+                WHERE o.observation_id LIKE ?
+                LIMIT 1
+            """, (f'%{identifier}%',))
+
+            row = cursor.fetchone()
+            if row:
+                return {
+                    'id': row[0],
+                    'observation_id': row[1],
+                    'ra': row[2],
+                    'dec': row[3],
+                    'survey_source': row[4],
+                    'image_data': row[7],
                     'captured_at': row[8],
                     'fov': row[9],
                     'predicted_class': row[11],
@@ -301,6 +420,38 @@ class GalaxyDatabase:
             return stats
         finally:
             conn.close()
+
+    def get_recent_observations_summary(self, limit: int = 5) -> str:
+        """Build a concise summary of recent observations from the local database."""
+        observations = self.get_recent_observations(limit)
+        if not observations:
+            return "No recent classified observations are available in the local database."
+
+        lines = []
+        for obs in observations:
+            lines.append(
+                f"- {obs['observation_id']} | RA={obs['ra']:.3f} DEC={obs['dec']:.3f} | "
+                f"survey={obs['survey_source']} | class={obs['predicted_class']} "
+                f"({obs['confidence']:.2f})"
+            )
+        return "\n".join(lines)
+
+    def get_observation_summary(self, observation_id: str) -> Optional[Dict]:
+        """Get a compact summary for a named observation."""
+        observation = self.get_observation_by_id(observation_id)
+        if observation is None:
+            return None
+
+        return {
+            'observation_id': observation['observation_id'],
+            'ra': observation['ra'],
+            'dec': observation['dec'],
+            'survey_source': observation['survey_source'],
+            'predicted_class': observation.get('predicted_class'),
+            'confidence': observation.get('confidence'),
+            'redshift': observation.get('redshift'),
+            'object_type': observation.get('object_type')
+        }
 
     def get_observation_internal_id(self, observation_id: str) -> Optional[int]:
         """Return the internal database id for an observation."""
@@ -351,6 +502,160 @@ class GalaxyDatabase:
             cursor.execute("DELETE FROM observations WHERE id = ?", (obs_id,))
             conn.commit()
             return True
+        finally:
+            conn.close()
+            
+            
+    def get_sample_rows(self, limit=5):
+
+        query = """
+        SELECT
+            o.observation_id,
+            o.ra,
+            o.dec,
+            o.survey_source,
+            c.predicted_class,
+            c.confidence,
+            m.object_type,
+            m.redshift
+        FROM observations o
+        LEFT JOIN classifications c
+            ON o.id = c.observation_id
+        LEFT JOIN astronomical_metadata m
+            ON o.id = m.observation_id
+        LIMIT ?
+        """
+
+        try:
+
+            cursor = self.conn.cursor()
+
+            cursor.execute(query, (limit,))
+
+            rows = cursor.fetchall()
+
+            columns = [
+                description[0]
+                for description in cursor.description
+            ]
+
+            formatted_rows = []
+
+            for row in rows:
+
+                formatted_rows.append(
+                    dict(zip(columns, row))
+                )
+
+            return json.dumps(
+                formatted_rows,
+                indent=2,
+                default=str
+            )
+
+        except Exception as e:
+            return f"Failed to fetch sample rows: {str(e)}"
+
+    def get_schema_info(self) -> str:
+        """Return database schema information for LLM context"""
+        return """
+DATABASE SCHEMA:
+
+1. observations (galaxy observation records)
+   - id (INTEGER): internal ID
+   - observation_id (TEXT): e.g., "GCSO-J1951-0258"
+   - ra (REAL): Right Ascension in degrees
+   - dec (REAL): Declination in degrees
+   - survey_source (TEXT): e.g., "DESI DR10", "SDSS9"
+   - captured_at (TIMESTAMP): when observed
+   - fov (REAL): Field of view in degrees
+
+2. classifications (ML model predictions)
+   - id (INTEGER): internal ID
+   - observation_id (INTEGER): foreign key to observations.id
+   - model_version (TEXT): model filename/version
+   - predicted_class (TEXT): "Disturbed / Merging", "Smooth", "Spiral", "Edge-on"
+   - confidence (REAL): 0.0 to 1.0
+   - classified_at (TIMESTAMP): when classified
+   - is_manual_override (BOOLEAN): user corrected this
+   - manual_class (TEXT): user's correction if overridden
+
+3. astronomical_metadata (catalog data)
+   - id (INTEGER): internal ID
+   - observation_id (INTEGER): foreign key to observations.id
+   - catalog_source (TEXT): e.g., "NOIRLab TAP", "Legacy Survey"
+   - object_type (TEXT): "GALAXY", "STAR", "QUASAR"
+   - redshift (REAL): cosmological redshift
+   - u_magnitude, g_magnitude, r_magnitude, i_magnitude, z_magnitude (REAL): photometry
+   - metadata_json (TEXT): additional JSON data
+
+4. chat_sessions
+   - id (INTEGER): internal ID
+   - session_id (TEXT): unique session identifier
+   - title (TEXT): session title
+
+5. chat_messages
+   - id (INTEGER): internal ID
+   - session_id (INTEGER): foreign key to chat_sessions.id
+   - role (TEXT): "user" or "assistant"
+   - content (TEXT): message text
+
+COMMON QUERIES:
+- Find galaxies by classification: SELECT * FROM observations o JOIN classifications c ON o.id = c.observation_id WHERE c.predicted_class = 'Spiral'
+- Count by class: SELECT predicted_class, COUNT(*) FROM classifications GROUP BY predicted_class
+- High confidence observations: SELECT * FROM observations o JOIN classifications c ON o.id = c.observation_id WHERE c.confidence > 0.9
+- Manual overrides: SELECT * FROM classifications WHERE is_manual_override = TRUE
+        """
+
+    def execute_query(self, sql: str, params: List = None) -> Dict[str, Any]:
+        """Safely execute a read-only SELECT query.
+        
+        Returns:
+            {
+                'success': bool,
+                'rows': List[Dict],
+                'count': int,
+                'error': str or None,
+                'columns': List[str]
+            }
+        """
+        # Security: only allow SELECT queries
+        if not sql.strip().upper().startswith('SELECT'):
+            return {
+                'success': False,
+                'error': 'Only SELECT queries are allowed',
+                'rows': [],
+                'count': 0,
+                'columns': []
+            }
+
+        conn = self.get_connection()
+        conn.row_factory = sqlite3.Row  # Return rows as dictionaries
+        try:
+            cursor = conn.cursor()
+            cursor.execute(sql, params or [])
+            
+            rows = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            
+            # Convert to list of dicts
+            result_rows = [dict(row) for row in rows]
+            
+            return {
+                'success': True,
+                'rows': result_rows,
+                'count': len(result_rows),
+                'columns': columns,
+                'error': None
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'rows': [],
+                'count': 0,
+                'columns': []
+            }
         finally:
             conn.close()
 

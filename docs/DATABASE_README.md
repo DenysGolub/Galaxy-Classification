@@ -1,6 +1,6 @@
 # Galaxy Classification Database Setup
 
-This document describes the database schema and setup for the Galaxy Classification Interface (GCI) web application.
+This document describes the database schema and setup for the Galaxy Classification System (GCS) web application.
 
 ## Recent Updates (April 2026)
 
@@ -36,7 +36,7 @@ The database consists of the following tables:
 ### Core Tables
 
 1. **observations** - Stores galaxy observation data
-   - observation_id (TEXT, UNIQUE) - Unique identifier like "GCI-J1951-0258"
+   - observation_id (TEXT, UNIQUE) - Unique identifier like "GCS-J1951-0258"
    - ra, dec (REAL) - Right Ascension and Declination coordinates
    - survey_source (TEXT) - Data source (DESI DR10, SDSS9, etc.)
    - image_data (BLOB) - Stored galaxy image

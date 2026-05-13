@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCI Console | Sky Survey Terminal</title>
+    <title>GCS Console | Sky Survey Terminal</title>
+    <link rel="preconnect" href="https://aladin.cds.unistra.fr">
+    <link rel="dns-prefetch" href="https://aladin.cds.unistra.fr">
+    <link rel="preload" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" as="script">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400&family=Inter:wght@300;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.css" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/survey.css') }}">
@@ -12,7 +15,7 @@
 
 <div id="loading-screen">
     <div class="loader-content">
-        <div class="loader-title">GCI_TERMINAL_v3.0.4</div>
+        <div class="loader-title">GCS_OBSERVATION</div>
         <div id="loader-status">INITIALIZING_NEURAL_LINK...</div>
         <div class="progress-container">
             <div id="progress-bar"></div>
@@ -26,9 +29,11 @@
 </div>
 
 <aside>
-    <div class="nav-header">GCI_TERMINAL_CORE</div>
-    <a href="#" class="nav-link active">01 // OBSERVATION_DECK</a>
-    <a href="#" class="nav-link">02 // NEURAL_ASSISTANT</a>
+    <div class="nav-header">GCS_TERMINAL_CORE</div>
+    <a href="/" class="nav-link">00 // MAIN_MENU</a>
+    <a href="/survey" class="nav-link active">01 // OBSERVATION_DECK</a>
+    <a href="/assistant" class="nav-link">02 // NEURAL_ASSISTANT</a>
+    <a href="/dossier" class="nav-link">03 // DISCOVERY_DOSSIERS</a>
     <div class="capture-box">
         <span class="capture-label">CENTER_FRAME_BUFFER (256x256)</span>
         <canvas id="capture-canvas" width="256" height="256"></canvas>
@@ -67,7 +72,7 @@
     </div>
 
     <div style="flex-grow: 1;"></div>
-    <button class="btn-tool" style="border-color: var(--accent); color: var(--accent);" onclick="captureSector()">CAPTURE_DATA</button>
+    <button id="capture-button" class="btn-tool" style="border-color: var(--accent); color: var(--accent);" onclick="captureSector()">CAPTURE_DATA</button>
     <button class="btn-tool" style="border-color: #4ade80; color: #4ade80;" onclick="predictCapturedObject()">RUN_PREDICTION</button>
 </div>
 
@@ -75,7 +80,6 @@
     <div class="modal-box">
         <div class="modal-header">
             <span>NEURAL_ENGINE_OUTPUT</span>
-            <span style="opacity: 0.5;">v3.0.4</span>
         </div>
         <div class="modal-body">
             <div id="modal-content">
@@ -86,11 +90,10 @@
             <div id="correction-ui" class="correction-ui">
                 <span style="font-size: 9px; color: #f87171; display: block; margin-bottom: 5px;">SELECT_CORRECT_CLASSIFICATION:</span>
                 <select id="manual-class" class="correction-select">
-                    <option value="star">STAR</option>
-                    <option value="galaxy">GALAXY</option>
-                    <option value="quasar">QUASAR</option>
-                    <option value="nebula">NEBULA</option>
-                    <option value="artifact">INSTRUMENT_ARTIFACT</option>
+                    <option value="spiral">SPIRAL</option>
+                    <option value="smooth">SMOOTH</option>
+                    <option value="edge-on">EDGE-ON</option>
+                    <option value="disturbed/merging">DISTURBED/MERGING</option>
                 </select>
                 <button class="btn-tool" style="width: 100%;" onclick="submitCorrection()">SUBMIT_OVERRIDE</button>
             </div>
@@ -110,7 +113,7 @@
         <div class="report-header">
             <div>
                 <h2 style="font-family: var(--font-mono); color: var(--accent); letter-spacing: 2px;">DISCOVERY_DOSSIER</h2>
-                <p style="font-size: 10px; opacity: 0.5;">GCI_SYSTEMS_REPORT // <span id="report-timestamp"></span></p>
+                <p style="font-size: 10px; opacity: 0.5;">GCS_SYSTEMS_REPORT // <span id="report-timestamp"></span></p>
             </div>
             <button class="btn-tool" onclick="closeReport()">X CLOSE_ENVELOPE</button>
         </div>
