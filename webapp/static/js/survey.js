@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         aladin = A.aladin('#aladin-lite-div', {
             survey: "CDS/P/DESI-Legacy-Surveys/DR10/color",
             fov: INITIAL_FOV,
-            target: "195.163 2.583",
+            target: "186.64102 9.01818",
             showZoomControl: false,
             showLayersControl: false,
             showStatus: false,

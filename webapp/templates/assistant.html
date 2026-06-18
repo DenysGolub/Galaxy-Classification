@@ -6,6 +6,59 @@
     <title>GCS Console | Astrophysical Analysis Core</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
+
+    .sql-block {
+        margin-top: 12px;
+        border: 1px solid var(--border-ui);
+        background: #0b0b10;
+        border-radius: 6px;
+        padding: 12px;
+    }
+
+    .sql-query {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--accent);
+        margin-bottom: 8px;
+        overflow-x: auto;
+    }
+
+    .sql-meta {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-dim);
+        margin-bottom: 8px;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .gcs-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--font-mono);
+        font-size: 11px;
+    }
+
+    .gcs-table th {
+        text-align: left;
+        color: var(--accent);
+        border-bottom: 1px solid var(--border-ui);
+        padding: 6px;
+    }
+
+    .gcs-table td {
+        padding: 6px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        color: var(--text-main);
+    }
+
+    .gcs-table tr:hover {
+        background: rgba(0, 212, 255, 0.06);
+    }
+
+
         :root {
             --bg-base: #0a0a0c;
             --bg-panel: #111114;
@@ -380,11 +433,11 @@
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                aiContentDiv.innerText += decoder.decode(value, { stream: true });
+                aiContentDiv.innerHTML += decoder.decode(value, { stream: true });
                 chatHistory.scrollTop = chatHistory.scrollHeight;
             }
         } catch (e) {
-            aiContentDiv.innerText = "!! CRITICAL_ERROR: Link to Llama-3 core dropped.";
+            aiContentDiv.innerHTML = "!! CRITICAL_ERROR: Link to Llama-3 core dropped.";
         } finally {
             isResponding = false;
             userInput.disabled = false;

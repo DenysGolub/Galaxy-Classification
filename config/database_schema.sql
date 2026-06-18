@@ -1,41 +1,35 @@
--- Galaxy Classification Database Schema
--- SQLite database for storing galaxy observations and classifications
-
--- Enable foreign keys
 PRAGMA foreign_keys = ON;
 
--- Galaxy observations table
 CREATE TABLE IF NOT EXISTS observations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    observation_id TEXT UNIQUE NOT NULL, -- e.g., "GCS-J1951-0258"
-    ra REAL NOT NULL, -- Right Ascension in degrees
-    dec REAL NOT NULL, -- Declination in degrees
-    survey_source TEXT NOT NULL, -- "DESI DR10", "SDSS9", etc.
-    image_path TEXT, -- Path to stored image file
-    image_data BLOB, -- Optional: store image directly as blob
+    observation_id TEXT UNIQUE NOT NULL, 
+    ra REAL NOT NULL, 
+    dec REAL NOT NULL,
+    survey_source TEXT NOT NULL, 
+    image_path TEXT,
+    image_data BLOB, 
     captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    fov REAL -- Field of view in degrees
+    fov REAL 
 );
 
 -- Classification results table
 CREATE TABLE IF NOT EXISTS classifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     observation_id INTEGER NOT NULL,
-    model_version TEXT NOT NULL, -- e.g., current configured model filename
-    predicted_class TEXT NOT NULL, -- "Disturbed / Merging", "Smooth", "Spiral", "Edge-on"
-    confidence REAL NOT NULL, -- 0.0 to 1.0
+    model_version TEXT NOT NULL, 
+    predicted_class TEXT NOT NULL, 
+    confidence REAL NOT NULL, 
     classified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_manual_override BOOLEAN DEFAULT FALSE,
-    manual_class TEXT, -- If manually corrected
+    manual_class TEXT, 
     FOREIGN KEY (observation_id) REFERENCES observations(id)
 );
 
--- Astronomical metadata from external catalogs
 CREATE TABLE IF NOT EXISTS astronomical_metadata (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     observation_id INTEGER NOT NULL,
-    catalog_source TEXT NOT NULL, -- "NOIRLab TAP", "Legacy Survey", etc.
-    object_type TEXT, -- "GALAXY", "STAR", "QUASAR", etc.
+    catalog_source TEXT NOT NULL, 
+    object_type TEXT, 
     flux_g REAL,
     flux_r REAL,
     redshift REAL,
@@ -44,31 +38,28 @@ CREATE TABLE IF NOT EXISTS astronomical_metadata (
     r_magnitude REAL,
     i_magnitude REAL,
     z_magnitude REAL,
-    metadata_json TEXT, -- Additional JSON metadata
+    metadata_json TEXT, 
     retrieved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (observation_id) REFERENCES observations(id)
 );
 
--- Chat conversations table
 CREATE TABLE IF NOT EXISTS chat_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id TEXT UNIQUE NOT NULL,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    title TEXT -- Optional session title
+    title TEXT 
 );
 
--- Individual chat messages
 CREATE TABLE IF NOT EXISTS chat_messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id INTEGER NOT NULL,
-    role TEXT NOT NULL, -- "user" or "assistant"
+    role TEXT NOT NULL, 
     content TEXT NOT NULL,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    tokens_used INTEGER, -- For tracking API usage
+    tokens_used INTEGER, 
     FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
 );
 
--- Model performance tracking
 CREATE TABLE IF NOT EXISTS model_metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     model_version TEXT NOT NULL,
@@ -81,19 +72,17 @@ CREATE TABLE IF NOT EXISTS model_metrics (
     notes TEXT
 );
 
--- User feedback and corrections
 CREATE TABLE IF NOT EXISTS user_feedback (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     observation_id INTEGER NOT NULL,
     original_prediction TEXT,
     user_correction TEXT NOT NULL,
-    feedback_type TEXT, -- "correction", "confirmation", "uncertain"
+    feedback_type TEXT, x
     comments TEXT,
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (observation_id) REFERENCES observations(id)
 );
 
--- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_observations_ra_dec ON observations(ra, dec);
 CREATE INDEX IF NOT EXISTS idx_observations_created ON observations(captured_at);
 CREATE INDEX IF NOT EXISTS idx_classifications_observation ON classifications(observation_id);
@@ -101,7 +90,6 @@ CREATE INDEX IF NOT EXISTS idx_classifications_confidence ON classifications(con
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_metadata_observation ON astronomical_metadata(observation_id);
 
--- Views for common queries
 CREATE VIEW IF NOT EXISTS recent_observations AS
 SELECT
     o.observation_id,

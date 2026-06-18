@@ -22,7 +22,6 @@ def run_flask():
 
 def main():
    run_flask()
-   
 
 
 if __name__ == '__main__':
