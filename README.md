@@ -1,128 +1,117 @@
 # Galaxy Classification
 
-A deep learning project for classifying galaxy morphologies using convolutional neural networks.
+A Python-based project for classifying galaxy morphologies from images and interacting with an AI assistant through a Flask web app.
+
+## Features
+
+- Train and run galaxy morphology classifiers
+- Classify galaxies from uploaded images or local files
+- Store observations and predictions in a local SQLite database
+- Use an Ollama-powered assistant for conversational help and database queries
 
 ## Project Structure
 
-```
+```text
 galaxy-classification/
-├── galaxy_classification/          # Main package
-│   ├── models/                     # Neural network models
-│   │   ├── cnn.py                  # GalaxyCNN model
-│   │   └── __init__.py
-│   ├── data/                       # Data handling
-│   │   ├── dataset.py              # Galaxy dataset
-│   │   ├── loader.py               # Data loader
-│   │   ├── transformed_subset.py   # Data transformations
-│   │   └── __init__.py
-│   ├── training/                   # Training and evaluation
-│   │   ├── train.py                # Training logic
-│   │   ├── evaluation.py           # Evaluation metrics
-│   │   └── __init__.py
-│   ├── database.py                 # Database operations
-│   └── __init__.py
-├── webapp/                         # Flask web application (refactored)
-│   ├── app.py                      # Main Flask app (simplified)
-│   ├── routes/                     # Route handlers
-│   │   ├── __init__.py
-│   │   ├── prediction.py           # Prediction endpoints
-│   │   ├── legacy.py               # Legacy data endpoints
-│   │   ├── observations.py         # Observation management
-│   │   ├── stats.py                # Statistics and feedback
-│   │   ├── chat.py                 # Chat functionality
-│   │   └── health.py               # Health checks
-│   ├── services/                   # Business logic services
-│   │   ├── __init__.py
-│   │   ├── prediction_service.py   # Prediction logic
-│   │   ├── legacy_service.py       # Legacy data fetching
-│   │   └── chat_service.py         # Chat AI logic
-│   ├── templates/                  # HTML templates
-│   └── static/                     # Static assets
-├── config/                         # Configuration files
-│   └── database_schema.sql         # Database schema
-├── scripts/                        # Utility scripts
-├── docs/                           # Documentation
-├── data/                           # Dataset files
-├── models/                         # Trained model weights
-├── notebooks/                      # Jupyter notebooks
-├── requirements.txt                # Python dependencies
-├── pyproject.toml                  # Project configuration
-└── README.md                       # This file
+├── galaxy_classification/      # Core package for data loading, models, and training
+├── webapp/                     # Flask application and UI routes
+├── config/                     # Configuration files
+├── data/                       # Dataset files
+├── models/                     # Pretrained model weights
+├── docs/                       # Additional documentation
+├── notebooks/                  # Jupyter experiments
+├── requirements.txt            # Python dependencies
+├── pyproject.toml              # Project configuration
+└── README.md                   # Project documentation
 ```
+
+## Requirements
+
+- Python 3.10+
+- pip
+- Ollama installed and running for the assistant chat features
+- Optional: CUDA-enabled GPU for faster training
 
 ## Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd galaxy-classification
 ```
 
-2. Create a virtual environment:
+2. Create and activate a virtual environment:
+
 ```bash
+# Windows (PowerShell)
 python -m venv .galaxy_env
-.galaxy_env\Scripts\activate  # Windows
-# or
-source .galaxy_env/bin/activate  # Linux/Mac
+.\.galaxy_env\Scripts\Activate.ps1
+
+# Linux / macOS
+python -m venv .galaxy_env
+source .galaxy_env/bin/activate
 ```
 
-3. Install dependencies:
+3. Install Python dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-## Usage
+4. Prepare the dataset and model files:
 
-### Web Application
+- Place the dataset file `Galaxy10_DECals.h5` in the `data/` directory.
+- Make sure the pretrained weights in `models/` are available. The app expects a compatible `.pth` file such as `models/efficient_net_0.8324.pth` by default.
 
-### Web Application
+## Assistant Models (Ollama)
 
-First, activate the virtual environment:
+The chat assistant uses Ollama models. These models must be pulled before running the web app:
+
 ```bash
-# Windows
-.galaxy_env\Scripts\activate
-# Linux/Mac
-source .galaxy_env/bin/activate
+ollama pull qwen3:8b
+ollama pull sqlcoder:7b
 ```
 
-Run the Flask web application:
+If Ollama is not already running, start it with:
+
 ```bash
-# From project root (recommended)
+ollama serve
+```
+
+To verify that the models are installed:
+
+```bash
+ollama list
+```
+
+## Running the Web App
+
+Start the Flask app from the project root:
+
+```bash
 python -m webapp.app
-
-# Or from webapp directory
-cd webapp
-python app.py
-
-# Or after installation: galaxy-web
 ```
 
-The web application is now organized into:
-- **Routes**: Separate files for different API endpoints
-- **Services**: Business logic separated from HTTP handling
-- **Main App**: Clean initialization and route registration
+Then open the app in your browser at:
 
-### Training
+```text
+http://127.0.0.1:5000/
+```
 
-Train the model:
+## Training a Model
+
+Run training with:
+
 ```bash
 python -m galaxy_classification.training.train
 ```
 
-### API
+## Notes
 
-The web app provides REST endpoints for:
-- Galaxy classification predictions
-- Observation management
-- Chat with AI assistant
-
-## Dataset
-
-The project uses the Galaxy10 DECals dataset. Place the dataset file `Galaxy10_DECals.h5` in the `data/` directory.
-
-## Models
-
-Trained model weights are stored in the `models/` directory.
+- The assistant chat feature calls the local Ollama API on port `11434`.
+- If the required models are not downloaded, chat requests may fail.
+- The web app uses a local SQLite database for storing observations and chat history.
 
 ## License
 
